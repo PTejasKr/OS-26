@@ -1,0 +1,261 @@
+@import "tailwindcss";
+
+:root {
+  --bg-main: #f2f2f2;
+  --text-main: #0d0d11;
+  --text-muted: #6b6a72;
+  --border-hairline: rgba(13, 13, 17, 0.15);
+  --card-bg: #e8e7e1;
+  --accent-brand: #891a20;
+}
+
+[data-theme="dark"], .theme-dark {
+  --bg-main: #07070a;
+  --text-main: #f3f1ea;
+  --text-muted: #8c8b94;
+  --border-hairline: rgba(243, 241, 234, 0.14);
+  --card-bg: #0c0c12;
+  --accent-brand: #891a20;
+}
+
+[data-theme="base"], .theme-base {
+  --bg-main: #f2f2f2;
+  --text-main: #0d0d11;
+  --text-muted: #6b6a72;
+  --border-hairline: rgba(13, 13, 17, 0.15);
+  --card-bg: #e8e7e1;
+  --accent-brand: #891a20;
+}
+
+@layer base {
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow-x: hidden;
+    transition: background-color 0.4s ease, color 0.4s ease;
+  }
+}
+
+/* Custom font utilities */
+.font-tall {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.font-editorial {
+  font-family: 'Instrument Serif', Georgia, serif;
+}
+
+.font-display {
+  font-family: 'Syne', sans-serif;
+}
+
+.font-mono-tech {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Authentic Physical Silver CD Anisotropic Base Gradient */
+.cd-silver-base {
+  background: radial-gradient(
+    circle at 50% 50%,
+    #ffffff 0%,
+    #f2f4f8 22%,
+    #d9dde5 50%,
+    #b8beca 78%,
+    #939aa6 100%
+  );
+}
+
+/* Anisotropic brushed silver reflection cones (dual opposing light cones) */
+.cd-silver-anisotropic {
+  background: conic-gradient(
+    from 125deg at 50% 50%,
+    #ccd1d9 0deg,
+    #f2f4f7 26deg,
+    #ffffff 50deg,
+    #e1e5eb 74deg,
+    #959ca9 98deg,
+    #d5dae2 126deg,
+    #ffffff 152deg,
+    #e2e6ed 178deg,
+    #959ca9 208deg,
+    #f8f9fb 238deg,
+    #ffffff 266deg,
+    #ccd1d9 292deg,
+    #959ca9 322deg,
+    #ccd1d9 360deg
+  );
+  mix-blend-mode: overlay;
+}
+
+/* Frosted Powdered Acrylic Micro-Texture (Velvety sandblasted satin grain) */
+.cd-powder-texture {
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='powderNoise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23powderNoise)'/%3E%3C/svg%3E"),
+    repeating-radial-gradient(
+      circle at 50% 50%,
+      rgba(255, 255, 255, 0.22) 0px,
+      rgba(255, 255, 255, 0.22) 1px,
+      transparent 1px,
+      transparent 2.5px
+    );
+  mix-blend-mode: overlay;
+  opacity: 0.45;
+}
+
+/* Ultra-fine Optical CD Pit Micro-Grooves */
+.cd-grooves {
+  background-image: repeating-radial-gradient(
+    circle at 50% 50%,
+    transparent 0px,
+    transparent 1.5px,
+    rgba(255, 255, 255, 0.24) 1.5px,
+    rgba(110, 116, 128, 0.2) 2.5px,
+    transparent 2.5px,
+    transparent 3.5px
+  );
+  opacity: 0.72;
+}
+
+/* Prismatic CD Rainbow Diffraction Sheen (Glistens across silver) */
+.cd-hologram {
+  background: conic-gradient(
+    from 45deg at 50% 50%,
+    rgba(255, 60, 110, 0.26) 0deg,
+    rgba(255, 175, 50, 0.3) 42deg,
+    rgba(240, 235, 60, 0.24) 84deg,
+    rgba(60, 235, 140, 0.26) 128deg,
+    rgba(50, 180, 255, 0.3) 175deg,
+    rgba(175, 80, 255, 0.26) 224deg,
+    rgba(255, 60, 170, 0.24) 280deg,
+    rgba(255, 175, 50, 0.28) 330deg,
+    rgba(255, 60, 110, 0.26) 360deg
+  );
+  mix-blend-mode: color-dodge;
+  opacity: 0.38;
+}
+
+/* High-Gloss Polished Acrylic Surface Refraction */
+.cd-acrylic-sheen {
+  background: linear-gradient(
+    118deg,
+    rgba(255, 255, 255, 0.82) 0%,
+    rgba(255, 255, 255, 0.3) 18%,
+    transparent 38%,
+    rgba(255, 255, 255, 0.08) 58%,
+    rgba(255, 255, 255, 0.35) 78%,
+    rgba(255, 255, 255, 0.72) 100%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.75;
+}
+
+/* Acrylic Glass Polished Edge Bevel */
+.cd-acrylic-bevel {
+  box-shadow:
+    inset 0 0 0 1.2px rgba(255, 255, 255, 0.95),
+    inset 0 0 0 2.5px rgba(160, 166, 178, 0.55),
+    inset 0 0 14px rgba(255, 255, 255, 0.65),
+    inset 0 0 32px rgba(100, 105, 118, 0.28);
+}
+
+/* Authentic A24 Film Grain Overlay */
+.film-grain {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.038;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Hand-Drawn Scribble Ring Animation (from a24.raviklaassens.com) */
+@keyframes scribble-draw {
+  0% {
+    stroke-dashoffset: 1200;
+    opacity: 0;
+    transform: rotate(0deg) scale(0.96);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+    transform: rotate(3deg) scale(1);
+  }
+}
+
+.animate-scribble {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 0;
+  animation: scribble-draw 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Spinning Disc Animation */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-disc {
+  animation: spin-slow 14s linear infinite;
+}
+
+.animate-spin-disc-paused {
+  animation: spin-slow 14s linear infinite;
+  animation-play-state: paused;
+}
+
+/* Up-next hint arrow animation */
+@keyframes scroll-next-hint {
+  0% {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  30% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+.animate-scroll-hint {
+  animation: scroll-next-hint 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Hairline horizontal divider */
+.divider-horizontal {
+  width: 100%;
+  height: 1px;
+  background-color: var(--border-hairline);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-hairline);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
