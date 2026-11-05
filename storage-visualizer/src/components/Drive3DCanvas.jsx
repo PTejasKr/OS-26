@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { Camera, Disc, Sparkles } from 'lucide-react';
+import { Camera, Disc } from 'lucide-react';
 import { playSeekTick, playReadPulse } from '../utils/soundEffects';
 
 /**
@@ -953,21 +953,6 @@ export default function Drive3DCanvas({
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Bottom Floating Telemetry & Hint */}
-      <div className="absolute bottom-4 left-4 bg-[#0a0d14]/90 backdrop-blur-md px-3.5 py-2 border border-[#24242e] text-xs flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[#891a20] animate-pulse shadow-[0_0_8px_#891a20]" />
-          <span className="font-mono-tech tracking-wider text-[#d6d5dc]">
-            HEAD POSITION: <strong className="text-white">CYL {currentTrack}</strong>
-          </span>
-        </div>
-        <span className="text-[#3a3a46]">|</span>
-        <span className="text-[11px] font-mono-tech tracking-wide text-[#8c8b94] flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span>Click 3D Platter to queue cylinder</span>
-        </span>
       </div>
     </div>
   );

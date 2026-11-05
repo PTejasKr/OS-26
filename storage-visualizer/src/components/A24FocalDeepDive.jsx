@@ -232,25 +232,25 @@ export default function A24FocalDeepDive({
 
           {/* Technical Metadata Row */}
           <div
-            className={`flex flex-wrap items-center gap-y-2 gap-x-8 text-xs font-mono-tech uppercase tracking-[0.18em] mb-12 ${
+            className={`flex flex-wrap items-center gap-y-3 gap-x-10 text-[22px] font-mono-tech uppercase tracking-wide mb-12 ${
               isDark ? 'text-[#8c8b94]' : 'text-[#6b6a72]'
             }`}
           >
             <div>
-              <span>RUNTIME COMPLEXITY: </span>
-              <span className={`font-medium ${isDark ? 'text-[#f3f1ea]' : 'text-[#0d0d11]'}`}>
+              <span className="opacity-70">RUNTIME COMPLEXITY: </span>
+              <span className={`font-bold ${isDark ? 'text-[#f3f1ea]' : 'text-[#0d0d11]'}`}>
                 {item.runtime}
               </span>
             </div>
             <div>
-              <span>ALGORITHM DOMAIN: </span>
-              <span className={`font-medium ${isDark ? 'text-[#f3f1ea]' : 'text-[#0d0d11]'}`}>
+              <span className="opacity-70">ALGORITHM DOMAIN: </span>
+              <span className={`font-bold ${isDark ? 'text-[#f3f1ea]' : 'text-[#0d0d11]'}`}>
                 {item.category}
               </span>
             </div>
             <div>
-              <span>SPECIFICATION YEAR: </span>
-              <span className={`font-medium ${isDark ? 'text-[#f3f1ea]' : 'text-[#0d0d11]'}`}>
+              <span className="opacity-70">SPECIFICATION YEAR: </span>
+              <span className={`font-bold ${isDark ? 'text-[#f3f1ea]' : 'text-[#0d0d11]'}`}>
                 {item.year}
               </span>
             </div>
@@ -278,7 +278,7 @@ export default function A24FocalDeepDive({
                 isSpinning={isSpinning}
                 size={290}
                 showScribble={false}
-                showNumberTag={true}
+                showNumberTag={false}
                 theme={theme}
               />
               <div className="mt-8 flex items-center space-x-3 z-10">
@@ -306,7 +306,7 @@ export default function A24FocalDeepDive({
                 >
                   CRITIC SYNOPSIS & ARCHIVAL ESSAY
                 </p>
-                <p className="text-2xl sm:text-3xl font-editorial italic leading-relaxed mb-6">
+                <p className={`text-[14px] leading-relaxed mb-6 font-normal ${isDark ? 'text-[#d6d5dc]' : 'text-[#2a2a32]'}`}>
                   "{item.synopsis}"
                 </p>
               </div>
@@ -676,7 +676,7 @@ export default function A24FocalDeepDive({
                 {nextItem.title}
               </h3>
               <p
-                className={`text-lg font-editorial italic transition-colors mt-1 ${
+                className={`text-[14px] font-normal transition-colors mt-1 ${
                   isDark
                     ? 'text-[#8c8b94] group-hover:text-[#f3f1ea]'
                     : 'text-[#6b6a72] group-hover:text-[#0d0d11]'

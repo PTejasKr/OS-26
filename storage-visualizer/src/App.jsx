@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import A24NavBar from './components/A24NavBar';
 import A24CrateGallery from './components/A24CrateGallery';
 import A24FocalDeepDive from './components/A24FocalDeepDive';
-import A24CatalogDrawer from './components/A24CatalogDrawer';
 import FileAllocationStudio from './components/FileAllocationStudio';
 import FreeSpaceCacheStudio from './components/FreeSpaceCacheStudio';
 import VivaExamTrainer from './components/VivaExamTrainer';
@@ -18,7 +17,6 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [activeDiscIndex, setActiveDiscIndex] = useState(0);
   const [focalItem, setFocalItem] = useState(null); // When non-null, focal deep-dive view is active
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeStudioTab, setActiveStudioTab] = useState('none'); // 'none', 'allocation', 'cache', 'viva', 'ascii'
 
   const isDark = theme === 'dark';
@@ -53,8 +51,6 @@ export default function App() {
 
       {/* TOP EDITORIAL NAVIGATION BAR */}
       <A24NavBar
-        onOpenDrawer={() => setIsDrawerOpen(true)}
-        catalogCount={A24_CATALOG.length}
         activeMatrix={activeDisc.matrixCode}
         theme={theme}
         onToggleTheme={handleToggleTheme}
@@ -109,7 +105,7 @@ export default function App() {
                   </h2>
                 </div>
                 <p
-                  className={`text-sm font-editorial italic max-w-md ${
+                  className={`text-[14px] font-normal max-w-md leading-relaxed ${
                     isDark ? 'text-[#8c8b94]' : 'text-[#6b6a72]'
                   }`}
                 >
@@ -164,7 +160,7 @@ export default function App() {
                             </span>
                           </div>
                           <p
-                            className={`text-sm font-editorial italic transition-colors ${
+                            className={`text-[14px] font-normal transition-colors mt-0.5 ${
                               isDark
                                 ? 'text-[#8c8b94] group-hover:text-[#f3f1ea]'
                                 : 'text-[#6b6a72] group-hover:text-[#0d0d11]'
@@ -384,18 +380,6 @@ export default function App() {
           </footer>
         </main>
       )}
-
-      {/* CATALOG INDEX OVERLAY DRAWER */}
-      <A24CatalogDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        catalog={A24_CATALOG}
-        theme={theme}
-        onSelectDisc={(index) => {
-          setActiveDiscIndex(index);
-          setFocalItem(A24_CATALOG[index]);
-        }}
-      />
     </div>
   );
 }

@@ -266,7 +266,7 @@ export default function FileAllocationStudio({ theme }) {
                   </div>
                 ) : (
                   <p
-                    className={`text-xs font-editorial italic ${
+                    className={`text-[14px] font-normal leading-relaxed ${
                       isDark ? 'text-[#8c8b94]' : 'text-[#6b6a72]'
                     }`}
                   >
@@ -302,7 +302,7 @@ export default function FileAllocationStudio({ theme }) {
                       {contiguousResult.fragmentationIndex}% ({contiguousResult.freeRuns} separate free gaps)
                     </span>
                   </div>
-                  <p className="text-xs font-editorial italic leading-relaxed pt-1">
+                  <p className="text-[14px] font-normal leading-relaxed pt-1">
                     Direct access formula: LBA = StartBlock + Offset (O(1)). Fast sequential read, but new files may be rejected if free space is fractured into non-contiguous fragments.
                   </p>
                 </>
@@ -313,7 +313,7 @@ export default function FileAllocationStudio({ theme }) {
                   <div className="text-xs font-mono-tech font-bold uppercase text-[#891a20]">
                     Linked Allocation & FAT Table:
                   </div>
-                  <p className="text-xs font-editorial italic leading-relaxed pt-1">
+                  <p className="text-[14px] font-normal leading-relaxed pt-1">
                     Blocks are scattered anywhere across the platters with zero external fragmentation. However, seeking to block K requires traversing K sequential disk pointers (O(N) sequential traversal delay).
                   </p>
                 </>
@@ -324,7 +324,7 @@ export default function FileAllocationStudio({ theme }) {
                   <div className="text-xs font-mono-tech font-bold uppercase text-[#891a20]">
                     Unix Inode Multi-Level Indexing:
                   </div>
-                  <p className="text-xs font-editorial italic leading-relaxed pt-1">
+                  <p className="text-[14px] font-normal leading-relaxed pt-1">
                     Combines the direct-access speed of contiguous allocation with the zero-fragmentation flexibility of linked allocation. The Inode holds Direct Pointers for small files, and Single/Double Indirect Pointers for massive files.
                   </p>
                 </>

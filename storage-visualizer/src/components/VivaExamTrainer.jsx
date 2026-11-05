@@ -111,7 +111,7 @@ export default function VivaExamTrainer({ theme }) {
             OS LABORATORY VIVA VOCE & EXAMINATION SUITE
           </h2>
           <p
-            className={`text-xs font-editorial italic mt-1 ${
+            className={`text-[14px] font-normal mt-1 ${
               isDark ? 'text-[#8c8b94]' : 'text-[#6b6a72]'
             }`}
           >
@@ -376,7 +376,7 @@ export default function VivaExamTrainer({ theme }) {
                   <div className="text-[10px] font-mono-tech uppercase tracking-[0.2em] font-bold text-[#891a20]">
                     Examiner Explanation:
                   </div>
-                  <p className="text-xs sm:text-sm font-editorial italic leading-relaxed">
+                  <p className="text-[14px] font-normal leading-relaxed">
                     "{currentQuiz.explanation}"
                   </p>
                 </div>
@@ -430,7 +430,7 @@ export default function VivaExamTrainer({ theme }) {
                 Viva Voce Assessment Complete
               </h3>
               <p
-                className={`text-sm font-editorial italic ${
+                className={`text-[14px] font-normal ${
                   isDark ? 'text-[#8c8b94]' : 'text-[#6b6a72]'
                 }`}
               >

@@ -190,7 +190,7 @@ export default function DataFlowStateMachine({
             </span>
           </div>
           <p
-            className={`font-editorial italic text-sm mt-1 max-w-3xl ${
+            className={`text-[14px] font-normal leading-relaxed mt-1 max-w-3xl ${
               isDark ? 'text-[#8c8b94]' : 'text-[#6b6a72]'
             }`}
           >
@@ -335,7 +335,7 @@ export default function DataFlowStateMachine({
         >
           <div className="space-y-4">
             <p
-              className={`leading-relaxed text-sm font-editorial italic text-base ${
+              className={`leading-relaxed text-[14px] font-normal ${
                 isDark ? 'text-[#d6d5dc]' : 'text-[#1b1b1e]'
               }`}
             >

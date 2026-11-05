@@ -1,18 +1,15 @@
 import React from 'react';
-import { Volume2, VolumeX, Menu, Sun, Moon, Disc, Sparkles } from 'lucide-react';
+import { Volume2, VolumeX, Sun, Moon } from 'lucide-react';
 import { toggleMute, isMuted, playButtonSnap } from '../utils/soundEffects';
 
 /**
  * A24NavBar
  * The sleek editorial top navigation bar mirroring a24.raviklaassens.com:
  * - Geometric logo mark
- * - Catalog index drawer opener
  * - Studio / Cinema theme switcher
  * - Audio state toggle
  */
 export default function A24NavBar({
-  onOpenDrawer,
-  catalogCount = 10,
   activeMatrix = 'OS26-DS-01',
   theme = 'base',
   onToggleTheme,
@@ -36,7 +33,7 @@ export default function A24NavBar({
           </span>
         </div>
 
-        {/* Right: Controls, Theme Switcher & Drawer */}
+        {/* Right: Controls & Theme Switcher */}
         <div className="flex items-center space-x-2 sm:space-x-3">
           {/* Theme Toggle Button (Studio vs Cinema) */}
           <button
@@ -71,22 +68,6 @@ export default function A24NavBar({
             title={muted ? 'Unmute Audio' : 'Mute Audio'}
           >
             {muted ? <VolumeX size={15} className="shrink-0" /> : <Volume2 size={15} className="shrink-0" />}
-          </button>
-
-          {/* Catalog Index Button */}
-          <button
-            onClick={() => {
-              playButtonSnap();
-              onOpenDrawer();
-            }}
-            className={`h-9 flex items-center justify-center space-x-2 px-3.5 border text-xs font-mono-tech uppercase tracking-[0.18em] transition-all font-bold ${
-              isDark
-                ? 'border-[#24242e] text-[#f3f1ea] hover:bg-[#f3f1ea] hover:text-[#07070a]'
-                : 'border-[#0d0d11] text-[#0d0d11] hover:bg-[#0d0d11] hover:text-[#f2f2f2]'
-            }`}
-          >
-            <Menu size={14} className="shrink-0" />
-            <span className="hidden sm:inline">CATALOG</span>
           </button>
         </div>
       </div>

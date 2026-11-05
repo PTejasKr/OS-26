@@ -39,20 +39,20 @@ export default function BentoCard({
             isDark ? 'border-[#24242e]' : 'border-[#0d0d11]/15'
           }`}
         >
-          <div className="flex items-center gap-3.5 min-w-0">
+          <div className="flex items-start gap-3.5 min-w-0 flex-1">
             {Icon && (
               <div
-                className={`w-9 h-9 flex items-center justify-center p-2 border transition-colors shrink-0 ${
+                className={`w-10 h-10 flex items-center justify-center p-2.5 border transition-colors shrink-0 mt-0.5 ${
                   isDark
                     ? 'border-[#24242e] bg-[#14141c] text-[#f3f1ea]'
                     : 'border-[#0d0d11]/20 bg-white text-[#0d0d11]'
                 }`}
               >
-                <Icon className="w-4 h-4 shrink-0" />
+                <Icon className="w-5 h-5 shrink-0" />
               </div>
             )}
-            <div className="min-w-0">
-              <div className="flex items-center gap-3 flex-wrap">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2 flex-wrap">
                 {title && (
                   <h3 className="font-tall text-xl sm:text-2xl font-bold uppercase tracking-wide leading-tight break-words">
                     {title}
@@ -60,7 +60,7 @@ export default function BentoCard({
                 )}
                 {badge && (
                   <span
-                    className={`font-mono-tech text-[10px] uppercase tracking-[0.18em] px-2.5 py-0.5 border font-semibold ${
+                    className={`font-mono-tech text-[10px] uppercase tracking-[0.18em] px-2.5 py-0.5 border font-semibold shrink-0 mt-0.5 ${
                       isDark
                         ? 'border-[#24242e] bg-[#14141c] text-[#8c8b94]'
                         : 'border-[#0d0d11]/20 bg-white text-[#6b6a72]'
@@ -72,7 +72,7 @@ export default function BentoCard({
               </div>
               {subtitle && (
                 <p
-                  className={`font-editorial italic text-xs sm:text-sm mt-0.5 ${
+                  className={`text-[14px] font-normal mt-0.5 ${
                     isDark ? 'text-[#8c8b94]' : 'text-[#6b6a72]'
                   }`}
                 >

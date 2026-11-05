@@ -206,7 +206,7 @@ export default function A24CrateGallery({
   return (
     <section
       id="section_hero"
-      className={`relative min-h-[90vh] flex flex-col justify-center items-center gap-6 pt-24 pb-12 w-full overflow-hidden transition-colors duration-500 select-none ${
+      className={`relative min-h-[85vh] flex flex-col justify-center items-center gap-4 sm:gap-6 pt-20 pb-10 sm:pt-24 sm:pb-14 w-full overflow-x-clip transition-colors duration-500 select-none ${
         isDark ? 'bg-[#07070a] text-[#f3f1ea]' : 'bg-[#f2f2f2] text-[#0d0d11]'
       }`}
     >
@@ -249,7 +249,7 @@ export default function A24CrateGallery({
           </h1>
 
           <p
-            className={`text-lg sm:text-xl font-editorial italic mb-4 ${
+            className={`text-[14px] font-normal mb-4 ${
               isDark ? 'text-[#dedbd2]' : 'text-[#3a3942]'
             }`}
           >
@@ -445,6 +445,7 @@ export default function A24CrateGallery({
                   opacity,
                   zIndex,
                   transformOrigin: 'center center',
+                  isolation: 'isolate',
                   transition: 'transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease',
                 }}
               >
