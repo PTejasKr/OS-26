@@ -52,7 +52,6 @@ export default function TerminalHeader({
     { id: 'ascii', label: 'ASCII Schematics', icon: Terminal, badge: 'ASCII' },
     { id: 'files', label: 'File Allocation & FAT', icon: FolderTree },
     { id: 'cache', label: 'Free Space & Buffer Cache', icon: Database },
-    { id: 'viva', label: 'Viva & Exam Studio', icon: GraduationCap },
   ];
 
   return (

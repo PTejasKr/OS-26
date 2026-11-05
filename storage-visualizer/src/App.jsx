@@ -4,7 +4,6 @@ import A24CrateGallery from './components/A24CrateGallery';
 import A24FocalDeepDive from './components/A24FocalDeepDive';
 import FileAllocationStudio from './components/FileAllocationStudio';
 import FreeSpaceCacheStudio from './components/FreeSpaceCacheStudio';
-import VivaExamTrainer from './components/VivaExamTrainer';
 import AsciiDiagrams from './components/AsciiDiagrams';
 import PerformanceComparison from './components/PerformanceComparison';
 import { A24_CATALOG } from './data/a24StorageCatalog';
@@ -17,7 +16,7 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [activeDiscIndex, setActiveDiscIndex] = useState(0);
   const [focalItem, setFocalItem] = useState(null); // When non-null, focal deep-dive view is active
-  const [activeStudioTab, setActiveStudioTab] = useState('none'); // 'none', 'allocation', 'cache', 'viva', 'ascii'
+  const [activeStudioTab, setActiveStudioTab] = useState('none'); // 'none', 'allocation', 'cache', 'ascii'
 
   const isDark = theme === 'dark';
 
@@ -242,7 +241,7 @@ export default function App() {
               </div>
 
               {/* Studio Selection Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                 {[
                   {
                     id: 'allocation',
@@ -257,14 +256,8 @@ export default function App() {
                     subtitle: 'FIFO, LRU, LFU & Clock Page Hits',
                   },
                   {
-                    id: 'viva',
-                    num: '03',
-                    title: 'EXAM TRAINER',
-                    subtitle: 'Viva & Technical Interview Drills',
-                  },
-                  {
                     id: 'ascii',
-                    num: '04',
+                    num: '03',
                     title: 'ASCII BLUEPRINTS',
                     subtitle: 'Textual System Architecture Schematics',
                   },
@@ -336,17 +329,6 @@ export default function App() {
                   }`}
                 >
                   <FreeSpaceCacheStudio theme={theme} />
-                </div>
-              )}
-              {activeStudioTab === 'viva' && (
-                <div
-                  className={`border p-6 animate-fade-in ${
-                    isDark
-                      ? 'bg-[#0c0c12] border-[#24242e]'
-                      : 'bg-[#e8e7e1] border-[#0d0d11]/15'
-                  }`}
-                >
-                  <VivaExamTrainer theme={theme} />
                 </div>
               )}
               {activeStudioTab === 'ascii' && (
