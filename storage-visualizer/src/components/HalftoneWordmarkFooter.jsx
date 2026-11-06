@@ -86,8 +86,8 @@ export function hwfRadius(coverage, gap) {
 
 /**
  * One step of a dot's spring back to home, plus the push from a pointer at
- * (px, py) within radius r. Returns [x, y, vx, vy]. Away from the pointer a
- * displaced dot always heads home and comes to rest.
+ * (px, py) within radius r. Returns [x, y, vx, vy].
+ * Tuned for 2x scatter area and ~2.5x slower return to home with smooth damping.
  */
 export function hwfStep(x, y, vx, vy, hx, hy, px, py, r) {
   const dx = x - px;
@@ -95,12 +95,15 @@ export function hwfStep(x, y, vx, vy, hx, hy, px, py, r) {
   const d2 = dx * dx + dy * dy;
   if (r > 0 && d2 < r * r) {
     const d = Math.sqrt(d2) + 0.001;
-    const f = (1 - d / r) * 2.6;
+    // Increased impulse and falloff for dramatic 2x scatter area
+    const f = Math.pow(1 - d / r, 1.2) * 5.2;
     vx += (dx / d) * f;
     vy += (dy / d) * f;
   }
-  vx = (vx + (hx - x) * 0.05) * 0.84;
-  vy = (vy + (hy - y) * 0.05) * 0.84;
+  // Soft spring constant (~0.019 vs 0.05) and higher inertia damping (~0.93 vs 0.84)
+  // makes the particles glide out widely and take ~2.5x longer to assemble back
+  vx = (vx + (hx - x) * 0.019) * 0.93;
+  vy = (vy + (hy - y) * 0.019) * 0.93;
   return [x + vx, y + vy, vx, vy];
 }
 
@@ -156,7 +159,7 @@ const HWF_CSS = `
 `;
 
 export default function HalftoneWordmarkFooter({
-  wordmark = "os/26",
+  wordmark = "OS/26",
   label = "OS/26",
   meta = "THE PHYSICAL STORAGE ALGORITHM ARCHIVE · 2026",
   columns = DEFAULT_COLUMNS,

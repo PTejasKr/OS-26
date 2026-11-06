@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import A24NavBar from './components/A24NavBar';
 import A24CrateGallery from './components/A24CrateGallery';
 import A24FocalDeepDive from './components/A24FocalDeepDive';
@@ -348,7 +348,7 @@ export default function App() {
 
           {/* HALFTONE WORDMARK FOOTER // OS/26 */}
           <HalftoneWordmarkFooter
-            wordmark="os/26"
+            wordmark="OS/26"
             label="OS/26"
             meta="THE PHYSICAL STORAGE ALGORITHM ARCHIVE · 2026"
             preset={isDark ? "night" : "paper"}
