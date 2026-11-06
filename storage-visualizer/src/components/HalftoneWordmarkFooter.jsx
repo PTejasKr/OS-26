@@ -352,8 +352,8 @@ export default function HalftoneWordmarkFooter({
           vx = s[2];
           vy = s[3];
           if (
-            Math.abs(vx) + Math.abs(vy) > 0.02 ||
-            Math.abs(x - hx) + Math.abs(y - hy) > 0.05
+            Math.abs(vx) + Math.abs(vy) > 0.005 ||
+            Math.abs(x - hx) + Math.abs(y - hy) > 0.02
           )
             moving = true;
           else {
