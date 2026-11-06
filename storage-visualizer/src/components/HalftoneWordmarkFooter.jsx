@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 // Halftone Wordmark Footer — a site footer whose wordmark is set enormous and
 // cropped by the bottom edge, printed as a field of halftone dots. Each dot is
@@ -145,7 +145,7 @@ const HWF_CSS = `
 .hwf-rule {
   position: relative; z-index: 1; display: flex; justify-content: flex-end; align-items: center; gap: 16px;
   margin: clamp(18px, 2.6vw, 30px) clamp(20px, 3.4vw, 44px) 0; padding-top: 12px;
-  border-top: 0.5px solid color-mix(in srgb, var(--hwf-ink) 16%, transparent);
+  border-top: none;
   font-family: var(--hwf-mono); font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase;
 }
 .hwf-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -162,7 +162,7 @@ export default function HalftoneWordmarkFooter({
   wordmark = "OS/26",
   label = "OS/26",
   meta = "THE PHYSICAL STORAGE ALGORITHM ARCHIVE · 2026",
-  columns = DEFAULT_COLUMNS,
+  columns = [],
   backToTop = true,
   preset = "night",
   palette,
@@ -496,7 +496,7 @@ export default function HalftoneWordmarkFooter({
           <strong>{label}</strong>
           <span>{meta}</span>
         </div>
-        {columns.map((col) => (
+        {columns && columns.length > 0 && columns.map((col) => (
           <nav className="hwf-col" key={col.title} aria-label={col.title}>
             <h3>{col.title}</h3>
             <ul>

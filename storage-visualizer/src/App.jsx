@@ -362,7 +362,7 @@ export default function App() {
             crop={0.18}
             grain={0.45}
             height="540px"
-            className="border-t border-[#0d0d11]/15 dark:border-[#24242e]"
+            columns={[]}
           />
         </main>
       )}
