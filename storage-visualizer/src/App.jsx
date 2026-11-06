@@ -6,6 +6,7 @@ import FileAllocationStudio from './components/FileAllocationStudio';
 import FreeSpaceCacheStudio from './components/FreeSpaceCacheStudio';
 import AsciiDiagrams from './components/AsciiDiagrams';
 import PerformanceComparison from './components/PerformanceComparison';
+import HalftoneWordmarkFooter from './components/HalftoneWordmarkFooter';
 import { A24_CATALOG } from './data/a24StorageCatalog';
 import { runAllAlgorithms } from './algorithms/diskScheduling';
 import { ArrowRight } from 'lucide-react';
@@ -345,21 +346,24 @@ export default function App() {
             </div>
           </section>
 
-          {/* FOOTER */}
-          <footer
-            className={`px-6 md:px-16 lg:px-24 py-12 border-t text-xs font-mono-tech transition-colors duration-500 ${
+          {/* HALFTONE WORDMARK FOOTER // OS/26 */}
+          <HalftoneWordmarkFooter
+            wordmark="os/26"
+            label="OS/26"
+            meta="THE PHYSICAL STORAGE ALGORITHM ARCHIVE · 2026"
+            preset={isDark ? "night" : "paper"}
+            palette={
               isDark
-                ? 'border-[#24242e] bg-[#07070a] text-[#8c8b94]'
-                : 'border-[#0d0d11]/15 bg-[#f2f2f2] text-[#6b6a72]'
-            }`}
-          >
-            <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center space-x-3">
-                <span className="text-xl font-tall font-bold">OS/26</span>
-                <span>THE PHYSICAL STORAGE ALGORITHM ARCHIVE</span>
-              </div>
-            </div>
-          </footer>
+                ? { background: "#07070a", ink: "#f3f1ea", warm: "#e9762b" }
+                : { background: "#f2f2f2", ink: "#0d0d11", warm: "#c2361c" }
+            }
+            dotGap={6}
+            radius={85}
+            crop={0.18}
+            grain={0.45}
+            height="540px"
+            className="border-t border-[#0d0d11]/15 dark:border-[#24242e]"
+          />
         </main>
       )}
     </div>
