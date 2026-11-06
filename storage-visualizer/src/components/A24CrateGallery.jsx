@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import A24PhysicalDisc from './A24PhysicalDisc';
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
-import { playVinylClick, playButtonSnap } from '../utils/soundEffects';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { playVinylClick } from '../utils/soundEffects';
 
 /**
  * A24CrateGallery
@@ -307,47 +307,28 @@ export default function A24CrateGallery({
           </div>
         </div>
 
-        {/* Right: Category Selector & Focal CTA */}
-        <div className="flex flex-col lg:items-end justify-between space-y-6">
-          {/* Category Filter Pills */}
-          <div className="flex flex-wrap items-center gap-2">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => {
-                  playVinylClick();
-                  onSelectCategory(cat);
-                }}
-                className={`px-3 py-1.5 text-[10px] font-mono-tech uppercase tracking-[0.2em] transition-all border ${
-                  selectedCategory === cat
-                    ? isDark
-                      ? 'bg-[#f3f1ea] text-[#07070a] border-[#f3f1ea] font-bold'
-                      : 'bg-[#0d0d11] text-[#f2f2f2] border-[#0d0d11] font-bold'
-                    : isDark
-                    ? 'bg-transparent text-[#8c8b94] border-[#24242e] hover:border-[#8c8b94] hover:text-[#f3f1ea]'
-                    : 'bg-transparent text-[#6b6a72] border-[#0d0d11]/20 hover:border-[#0d0d11] hover:text-[#0d0d11]'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Focal View Deep Dive CTA */}
-          <button
-            onClick={() => {
-              playButtonSnap();
-              onOpenFocalView(activeItem);
-            }}
-            className={`group flex items-center space-x-3 px-6 py-3.5 font-mono-tech text-xs uppercase tracking-[0.2em] font-bold transition-all shadow-lg ${
-              isDark
-                ? 'bg-[#f3f1ea] text-[#07070a] hover:bg-white hover:scale-105 active:scale-95'
-                : 'bg-[#0d0d11] text-[#f2f2f2] hover:bg-black hover:scale-105 active:scale-95'
-            }`}
-          >
-            <span>INSPECT ALGORITHM // FOCAL VIEW</span>
-            <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
-          </button>
+        {/* Right: Category Selector */}
+        <div className="flex flex-wrap items-center lg:justify-end gap-2">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => {
+                playVinylClick();
+                onSelectCategory(cat);
+              }}
+              className={`px-3 py-1.5 text-[10px] font-mono-tech uppercase tracking-[0.2em] transition-all border ${
+                selectedCategory === cat
+                  ? isDark
+                    ? 'bg-[#f3f1ea] text-[#07070a] border-[#f3f1ea] font-bold'
+                    : 'bg-[#0d0d11] text-[#f2f2f2] border-[#0d0d11] font-bold'
+                  : isDark
+                  ? 'bg-transparent text-[#8c8b94] border-[#24242e] hover:border-[#8c8b94] hover:text-[#f3f1ea]'
+                  : 'bg-transparent text-[#6b6a72] border-[#0d0d11]/20 hover:border-[#0d0d11] hover:text-[#0d0d11]'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
       </div>
 

@@ -14,14 +14,14 @@
 
 import * as React from "react";
 
-export const PRESETS = {
+const PRESETS = {
   night: { background: "#0c0c0b", ink: "#e9e4da", warm: "#e9762b" },
   paper: { background: "#efebe3", ink: "#17150f", warm: "#c2361c" },
   ember: { background: "#160a06", ink: "#f2c48c", warm: "#ff5a1f" },
   cobalt: { background: "#0d1b4d", ink: "#dfe7ff", warm: "#ffcd3c" },
 };
 
-export const DEFAULT_COLUMNS = [
+const DEFAULT_COLUMNS = [
   {
     title: "Algorithms",
     links: [
@@ -87,7 +87,7 @@ export function hwfRadius(coverage, gap) {
 /**
  * One step of a dot's spring back to home, plus the push from a pointer at
  * (px, py) within radius r. Returns [x, y, vx, vy].
- * Tuned for 2x scatter area and ~2.5x slower return to home with smooth damping.
+ * Tuned for 2x scatter area and 5x slower reassembly time with ultra-smooth float return.
  */
 export function hwfStep(x, y, vx, vy, hx, hy, px, py, r) {
   const dx = x - px;
@@ -95,15 +95,15 @@ export function hwfStep(x, y, vx, vy, hx, hy, px, py, r) {
   const d2 = dx * dx + dy * dy;
   if (r > 0 && d2 < r * r) {
     const d = Math.sqrt(d2) + 0.001;
-    // Increased impulse and falloff for dramatic 2x scatter area
+    // Impulse and falloff for wide scatter area
     const f = Math.pow(1 - d / r, 1.2) * 5.2;
     vx += (dx / d) * f;
     vy += (dy / d) * f;
   }
-  // Soft spring constant (~0.019 vs 0.05) and higher inertia damping (~0.93 vs 0.84)
-  // makes the particles glide out widely and take ~2.5x longer to assemble back
-  vx = (vx + (hx - x) * 0.019) * 0.93;
-  vy = (vy + (hy - y) * 0.019) * 0.93;
+  // Soft spring constant (~0.0038 vs 0.019) with 0.965 damping
+  // slows down particle return by 5x into a mesmerizing slow-motion float
+  vx = (vx + (hx - x) * 0.0038) * 0.965;
+  vy = (vy + (hy - y) * 0.0038) * 0.965;
   return [x + vx, y + vy, vx, vy];
 }
 
