@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useLayoutEffect, useMemo, useCallback } from 'react';
 import A24NavBar from './components/A24NavBar';
 import A24CrateGallery from './components/A24CrateGallery';
 import A24FocalDeepDive from './components/A24FocalDeepDive';
@@ -12,6 +12,10 @@ import { runAllAlgorithms } from './algorithms/diskScheduling';
 import { ArrowRight } from 'lucide-react';
 import { playVinylClick, playButtonSnap } from './utils/soundEffects';
 
+const DARK_FOOTER_PALETTE = { background: '#07070a', ink: '#f3f1ea', warm: '#e9762b' };
+const LIGHT_FOOTER_PALETTE = { background: '#f2f2f2', ink: '#0d0d11', warm: '#c2361c' };
+const EMPTY_COLUMNS = [];
+
 export default function App() {
   const [theme, setTheme] = useState('base'); // 'base' (studio off-white matching a24.raviklaassens.com) or 'dark' (cinema noir)
   const [selectedCategory, setSelectedCategory] = useState('ALL');
@@ -21,8 +25,8 @@ export default function App() {
 
   const isDark = theme === 'dark';
 
-  // Synchronize data-theme on html root
-  useEffect(() => {
+  // Synchronize data-theme synchronously before paint so CSS vars and utility classes transition in the same frame
+  useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
@@ -34,9 +38,27 @@ export default function App() {
 
   const activeDisc = filteredCatalog[activeDiscIndex] || filteredCatalog[0] || A24_CATALOG[0];
 
-  const handleToggleTheme = () => {
+  const handleToggleTheme = useCallback(() => {
     setTheme((prev) => (prev === 'base' ? 'dark' : 'base'));
-  };
+  }, []);
+
+  const handleOpenFocalView = useCallback((item) => {
+    setFocalItem(item);
+  }, []);
+
+  const handleCloseFocalView = useCallback(() => {
+    setFocalItem(null);
+  }, []);
+
+  const handleSelectNextFocal = useCallback((next) => {
+    setFocalItem(next);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, []);
+
+  const handleSelectCategory = useCallback((cat) => {
+    setSelectedCategory(cat);
+    setActiveDiscIndex(0);
+  }, []);
 
   return (
     <div
@@ -58,11 +80,12 @@ export default function App() {
 
       {/* CONDITIONAL RENDER: FOCAL DEEP-DIVE TAKEOVER OR HORIZONTAL RECORD CRATE */}
       {focalItem ? (
-        <A24FocalDeepDive key={focalItem.id}
+        <A24FocalDeepDive
+          key={focalItem.id}
           item={focalItem}
           catalog={A24_CATALOG}
-          onClose={() => setFocalItem(null)}
-          onSelectNext={(next) => { setFocalItem(next); window.scrollTo({ top: 0, behavior: 'auto' }); }}
+          onClose={handleCloseFocalView}
+          onSelectNext={handleSelectNextFocal}
           theme={theme}
           onToggleTheme={handleToggleTheme}
         />
@@ -73,21 +96,18 @@ export default function App() {
             catalog={filteredCatalog}
             activeIndex={activeDiscIndex}
             onSelectIndex={setActiveDiscIndex}
-            onOpenFocalView={(item) => setFocalItem(item)}
+            onOpenFocalView={handleOpenFocalView}
             selectedCategory={selectedCategory}
-            onSelectCategory={(cat) => {
-              setSelectedCategory(cat);
-              setActiveDiscIndex(0);
-            }}
+            onSelectCategory={handleSelectCategory}
             theme={theme}
           />
 
           {/* DEDICATED OS WORKSHOPS & STUDIOS SECTION */}
           <section
-            className={`px-6 md:px-16 lg:px-24 py-20 border-t transition-colors duration-500 ${
+            className={`px-6 md:px-16 lg:px-24 py-20 border-t bg-transparent transition-colors duration-500 ${
               isDark
-                ? 'border-[#24242e] bg-[#07070a]'
-                : 'border-[#0d0d11]/15 bg-[#f2f2f2]'
+                ? 'border-[#24242e]'
+                : 'border-[#0d0d11]/15'
             }`}
           >
             <div className="max-w-7xl mx-auto">
@@ -214,18 +234,14 @@ export default function App() {
             wordmark="OS/26"
             label="OS/26"
             meta="THE PHYSICAL STORAGE ALGORITHM ARCHIVE · 2026"
-            preset={isDark ? "night" : "paper"}
-            palette={
-              isDark
-                ? { background: "#07070a", ink: "#f3f1ea", warm: "#e9762b" }
-                : { background: "#f2f2f2", ink: "#0d0d11", warm: "#c2361c" }
-            }
+            preset={isDark ? 'night' : 'paper'}
+            palette={isDark ? DARK_FOOTER_PALETTE : LIGHT_FOOTER_PALETTE}
             dotGap={6}
             radius={85}
             crop={0.18}
             grain={0.45}
             height="540px"
-            columns={[]}
+            columns={EMPTY_COLUMNS}
           />
         </main>
       )}

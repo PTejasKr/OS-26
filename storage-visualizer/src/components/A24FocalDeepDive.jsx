@@ -40,7 +40,7 @@ import {
  * - Embedded 3D Hardware Platter, Trajectory, Math Proof, & ASCII Schematics
  * - Up-Next endless crate scroll transition at bottom
  */
-export default function A24FocalDeepDive({
+const A24FocalDeepDive = React.memo(function A24FocalDeepDive({
   item,
   catalog,
   onClose,
@@ -85,13 +85,101 @@ export default function A24FocalDeepDive({
   const currentIndex = catalog.findIndex((c) => c.id === item.id);
   const nextItem = catalog[(currentIndex + 1) % catalog.length];
 
+  const pageRootRef = useRef(null);
   const footerRef = useRef(null);
+  const footerStageRef = useRef(null);
+  const footerGlowRef = useRef(null);
+  const footerDiscRef = useRef(null);
+  const bar0Ref = useRef(null);
+  const bar1Ref = useRef(null);
+  const statusLabelRef = useRef(null);
   const [footerPullCount, setFooterPullCount] = useState(0);
-  const [pullProgress, setPullProgress] = useState(0);
   const isAdvancingRef = useRef(false);
   const pullCountRef = useRef(0);
+  const pullProgressRef = useRef(0);
+  const dragRafRef = useRef(null);
   const resetTimerRef = useRef(null);
+  const advanceTimerRef = useRef(null);
+  const clearDragTimerRef = useRef(null);
   const didDragRef = useRef(false);
+
+  const applyDragVisuals = useCallback(
+    (progress, isActivelyDragging) => {
+      pullProgressRef.current = Math.max(0, Math.min(1, progress));
+      if (dragRafRef.current) {
+        cancelAnimationFrame(dragRafRef.current);
+      }
+
+      dragRafRef.current = requestAnimationFrame(() => {
+        dragRafRef.current = null;
+        if (isAdvancingRef.current) return;
+
+        const stage = pullCountRef.current;
+        const clamped = pullProgressRef.current;
+        const eased = 1 - Math.pow(1 - clamped, 1.6);
+        const pullY = isActivelyDragging ? Math.round(eased * 56 * 10) / 10 : 0;
+
+        if (footerStageRef.current) {
+          footerStageRef.current.style.transition = isActivelyDragging
+            ? 'none'
+            : 'transform 460ms cubic-bezier(0.22, 1, 0.36, 1)';
+          footerStageRef.current.style.transform = `translate3d(0, ${-pullY}px, 0)`;
+        }
+
+        if (footerDiscRef.current) {
+          footerDiscRef.current.style.transition = isActivelyDragging
+            ? 'none'
+            : 'transform 460ms cubic-bezier(0.22, 1, 0.36, 1)';
+          footerDiscRef.current.style.transform = isActivelyDragging
+            ? `scale(${(1 + eased * 0.08).toFixed(4)}) rotate(${(eased * 22).toFixed(2)}deg)`
+            : 'scale(1) rotate(0deg)';
+        }
+
+        if (footerGlowRef.current) {
+          const baseOpacity = stage >= 1 ? 0.14 : 0.04;
+          footerGlowRef.current.style.transition = isActivelyDragging
+            ? 'none'
+            : 'opacity 420ms ease-out';
+          footerGlowRef.current.style.opacity = String(
+            isActivelyDragging ? Math.min(0.36, baseOpacity + eased * 0.24) : baseOpacity
+          );
+        }
+
+        const bar0Pct = stage >= 1 ? 100 : isActivelyDragging ? Math.round(clamped * 100) : 0;
+        const bar1Pct =
+          stage >= 2 ? 100 : stage === 1 && isActivelyDragging ? Math.round(clamped * 100) : 0;
+        const barTransition = isActivelyDragging
+          ? 'none'
+          : 'width 320ms cubic-bezier(0.22, 1, 0.36, 1)';
+
+        if (bar0Ref.current) {
+          bar0Ref.current.style.transition = barTransition;
+          bar0Ref.current.style.width = `${bar0Pct}%`;
+        }
+        if (bar1Ref.current) {
+          bar1Ref.current.style.transition = barTransition;
+          bar1Ref.current.style.width = `${bar1Pct}%`;
+        }
+
+        if (statusLabelRef.current && nextItem) {
+          if (stage >= 2) {
+            statusLabelRef.current.textContent = `SWITCHING TO ${nextItem.title}...`;
+          } else if (stage === 1) {
+            statusLabelRef.current.textContent =
+              isActivelyDragging && clamped > 0.04
+                ? `PULLING 2 / 2 · KEEP DRAGGING (${Math.round(clamped * 100)}%)`
+                : `DRAG 1 / 2 ARMED · LONG DRAG AGAIN FOR ${nextItem.title}`;
+          } else {
+            statusLabelRef.current.textContent =
+              isActivelyDragging && clamped > 0.04
+                ? `PULLING 1 / 2 · KEEP DRAGGING (${Math.round(clamped * 100)}%)`
+                : 'LONG DRAG TWICE AT FOOTER TO SWITCH CARD';
+          }
+        }
+      });
+    },
+    [nextItem]
+  );
 
   const updatePullCount = useCallback((val) => {
     pullCountRef.current = val;
@@ -102,14 +190,47 @@ export default function A24FocalDeepDive({
     if (isAdvancingRef.current || !nextItem) return;
     isAdvancingRef.current = true;
     clearTimeout(resetTimerRef.current);
+    clearTimeout(advanceTimerRef.current);
+    if (dragRafRef.current) {
+      cancelAnimationFrame(dragRafRef.current);
+      dragRafRef.current = null;
+    }
+    document.body.style.cursor = '';
     updatePullCount(2);
-    setPullProgress(1);
     playVinylClick();
 
-    setTimeout(() => {
-      onSelectNext(nextItem);
-      window.scrollTo({ top: 0, behavior: 'auto' });
-    }, 180);
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    if (bar0Ref.current) bar0Ref.current.style.width = '100%';
+    if (bar1Ref.current) bar1Ref.current.style.width = '100%';
+    if (statusLabelRef.current) {
+      statusLabelRef.current.textContent = `SWITCHING TO ${nextItem.title}...`;
+    }
+    if (footerGlowRef.current) {
+      footerGlowRef.current.style.transition = 'opacity 260ms ease-out';
+      footerGlowRef.current.style.opacity = '0.36';
+    }
+    if (!prefersReducedMotion) {
+      if (footerStageRef.current) {
+        footerStageRef.current.style.transition =
+          'transform 340ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease-out';
+        footerStageRef.current.style.transform = 'translate3d(0, -96px, 0)';
+        footerStageRef.current.style.opacity = '0';
+      }
+      if (pageRootRef.current) {
+        pageRootRef.current.style.transition = 'opacity 280ms cubic-bezier(0.22, 1, 0.36, 1)';
+        pageRootRef.current.style.opacity = '0';
+      }
+    }
+
+    advanceTimerRef.current = setTimeout(
+      () => {
+        onSelectNext(nextItem);
+      },
+      prefersReducedMotion ? 40 : 300
+    );
   }, [nextItem, onSelectNext, updatePullCount]);
 
   const registerFooterDrag = useCallback(() => {
@@ -122,20 +243,38 @@ export default function A24FocalDeepDive({
     } else {
       playSeekTick();
       updatePullCount(1);
+      applyDragVisuals(0, false);
       resetTimerRef.current = setTimeout(() => {
         updatePullCount(0);
+        applyDragVisuals(0, false);
       }, 8000);
     }
-  }, [triggerNextCard, updatePullCount]);
+  }, [triggerNextCard, updatePullCount, applyDragVisuals]);
 
-  // Reset scroll to top on card change and attach bottom double-drag listeners
+  // Reset scroll & visuals on card change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
     isAdvancingRef.current = false;
+    document.body.style.cursor = '';
+    if (pageRootRef.current) {
+      pageRootRef.current.style.transition = '';
+      pageRootRef.current.style.opacity = '1';
+    }
+    if (footerStageRef.current) {
+      footerStageRef.current.style.opacity = '1';
+    }
     updatePullCount(0);
-    setPullProgress(0);
-    return () => clearTimeout(resetTimerRef.current);
-  }, [item.id, updatePullCount]);
+    applyDragVisuals(0, false);
+    return () => {
+      document.body.style.cursor = '';
+      clearTimeout(resetTimerRef.current);
+      clearTimeout(advanceTimerRef.current);
+      clearTimeout(clearDragTimerRef.current);
+      if (dragRafRef.current) {
+        cancelAnimationFrame(dragRafRef.current);
+      }
+    };
+  }, [item.id, updatePullCount, applyDragVisuals]);
 
   useEffect(() => {
     const isNearBottom = (tolerance = 60) => {
@@ -145,9 +284,11 @@ export default function A24FocalDeepDive({
     };
 
     const getThresholdPx = () =>
-      Math.min(110, Math.max(70, window.innerHeight * 0.12));
+      Math.min(115, Math.max(76, window.innerHeight * 0.12));
 
-    // 1. Mouse long drag state
+    const DEADZONE_PX = 10;
+
+    // 1. Mouse long drag state across whole Section 3 (or near page bottom)
     const pointerState = {
       active: false,
       startX: 0,
@@ -159,27 +300,40 @@ export default function A24FocalDeepDive({
     };
 
     const onPointerDown = (e) => {
-      if (e.pointerType !== 'mouse' || e.button !== 0 || isAdvancingRef.current) return;
+      if (e.pointerType === 'touch' || e.button !== 0 || isAdvancingRef.current) return;
+      if (e.clientX >= document.documentElement.clientWidth) return;
       const tag = e.target?.tagName || '';
       if (['INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'CANVAS'].includes(tag)) return;
 
+      const inFooter = Boolean(footerRef.current?.contains(e.target));
+      const startedNearBottom = isNearBottom(80);
+      if (!inFooter && !(startedNearBottom && e.clientY >= window.innerHeight * 0.45)) {
+        return;
+      }
+
+      clearTimeout(clearDragTimerRef.current);
       pointerState.active = true;
       pointerState.startX = e.clientX;
       pointerState.startY = e.clientY;
-      pointerState.inFooter = Boolean(footerRef.current?.contains(e.target));
-      pointerState.startedNearBottom = isNearBottom(80);
+      pointerState.inFooter = inFooter;
+      pointerState.startedNearBottom = startedNearBottom;
       pointerState.startTag = tag;
       pointerState.consumed = false;
       didDragRef.current = false;
+
+      if (inFooter) {
+        document.body.style.cursor = 'grabbing';
+      }
     };
 
     const onPointerMove = (e) => {
-      if (e.pointerType !== 'mouse' || !pointerState.active) return;
+      if (e.pointerType === 'touch' || !pointerState.active) return;
       const dx = e.clientX - pointerState.startX;
       const dy = pointerState.startY - e.clientY;
 
       if (Math.hypot(dx, dy) > 8) {
         didDragRef.current = true;
+        document.body.style.cursor = 'grabbing';
       }
 
       if (pointerState.consumed || isAdvancingRef.current) return;
@@ -190,29 +344,35 @@ export default function A24FocalDeepDive({
           pointerState.startY >= window.innerHeight * 0.45 &&
           !['CODE', 'PRE'].includes(pointerState.startTag));
 
-      if (eligible && dy > 16 && dy > Math.abs(dx) * 1.15) {
+      if (eligible && dy > DEADZONE_PX && dy > Math.abs(dx) * 0.85) {
         if (!pointerState.inFooter) {
           window.getSelection?.()?.removeAllRanges?.();
         }
         const threshold = getThresholdPx();
-        setPullProgress(Math.min(1, dy / threshold));
+        const progress = Math.min(1, (dy - DEADZONE_PX) / Math.max(1, threshold - DEADZONE_PX));
+        applyDragVisuals(progress, true);
         if (dy >= threshold) {
           pointerState.consumed = true;
-          setPullProgress(0);
+          document.body.style.cursor = '';
           registerFooterDrag();
         }
-      } else if (dy <= 0) {
-        setPullProgress(0);
+      } else if (dy <= DEADZONE_PX) {
+        applyDragVisuals(0, false);
       }
     };
 
     const onPointerEnd = (e) => {
-      if (e.pointerType !== 'mouse' || !pointerState.active) return;
+      if (e?.pointerType === 'touch') return;
+      if (!pointerState.active) return;
       pointerState.active = false;
-      setPullProgress(0);
-      setTimeout(() => {
+      document.body.style.cursor = '';
+      if (!pointerState.consumed && !isAdvancingRef.current) {
+        applyDragVisuals(0, false);
+      }
+      clearTimeout(clearDragTimerRef.current);
+      clearDragTimerRef.current = setTimeout(() => {
         didDragRef.current = false;
-      }, 0);
+      }, 140);
     };
 
     // 2. Touch long drag state (mobile / touchscreen)
@@ -220,8 +380,8 @@ export default function A24FocalDeepDive({
       active: false,
       startX: 0,
       startY: 0,
+      pullOriginY: null,
       inFooter: false,
-      startedNearBottom: false,
       consumed: false,
     };
 
@@ -231,40 +391,51 @@ export default function A24FocalDeepDive({
       const tag = e.target?.tagName || '';
       if (['INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'CANVAS'].includes(tag)) return;
 
+      const nearBottom = isNearBottom(60);
       touchState.active = true;
       touchState.startX = touch.clientX;
       touchState.startY = touch.clientY;
       touchState.inFooter = Boolean(footerRef.current?.contains(e.target));
-      touchState.startedNearBottom = isNearBottom(60);
+      touchState.pullOriginY =
+        nearBottom && (touchState.inFooter || touch.clientY >= window.innerHeight * 0.45)
+          ? touch.clientY
+          : null;
       touchState.consumed = false;
     };
 
     const onTouchMove = (e) => {
       if (!touchState.active || touchState.consumed || e.touches.length !== 1 || isAdvancingRef.current) return;
       const touch = e.touches[0];
+
+      if (touchState.pullOriginY === null) {
+        if (touchState.inFooter && isNearBottom(24)) {
+          touchState.pullOriginY = touch.clientY;
+        }
+        return;
+      }
+
       const dx = touch.clientX - touchState.startX;
-      const dy = touchState.startY - touch.clientY;
+      const dy = touchState.pullOriginY - touch.clientY;
 
-      const eligible =
-        (touchState.inFooter && isNearBottom(180)) ||
-        (touchState.startedNearBottom && touchState.startY >= window.innerHeight * 0.45);
-
-      if (eligible && dy > 16 && dy > Math.abs(dx) * 1.15) {
+      if (dy > DEADZONE_PX && dy > Math.abs(dx) * 0.85) {
         const threshold = getThresholdPx();
-        setPullProgress(Math.min(1, dy / threshold));
+        const progress = Math.min(1, (dy - DEADZONE_PX) / Math.max(1, threshold - DEADZONE_PX));
+        applyDragVisuals(progress, true);
         if (dy >= threshold) {
           touchState.consumed = true;
-          setPullProgress(0);
           registerFooterDrag();
         }
-      } else if (dy <= 0) {
-        setPullProgress(0);
+      } else if (dy <= DEADZONE_PX) {
+        applyDragVisuals(0, false);
       }
     };
 
     const onTouchEnd = () => {
       touchState.active = false;
-      setPullProgress(0);
+      touchState.pullOriginY = null;
+      if (!touchState.consumed && !isAdvancingRef.current) {
+        applyDragVisuals(0, false);
+      }
     };
 
     // 3. Wheel / trackpad overscroll downward at footer
@@ -284,11 +455,11 @@ export default function A24FocalDeepDive({
       const now = performance.now();
       const gap = now - wheelState.lastTime;
       const isFreshGesture =
-        gap > 240 ||
+        gap > 200 ||
         (wheelState.consumed &&
-          e.deltaY >= 35 &&
-          e.deltaY > wheelState.lastDeltaY * 2.2 &&
-          wheelState.lastDeltaY <= 12);
+          e.deltaY >= 32 &&
+          e.deltaY > wheelState.lastDeltaY * 2.0 + 8 &&
+          wheelState.lastDeltaY <= 18);
 
       if (isFreshGesture) {
         wheelState.accum = 0;
@@ -302,30 +473,31 @@ export default function A24FocalDeepDive({
       if (!wheelState.startedAtBottom || wheelState.consumed) return;
 
       wheelState.accum += e.deltaY;
-      setPullProgress(Math.min(1, wheelState.accum / WHEEL_THRESHOLD));
+      applyDragVisuals(Math.min(1, wheelState.accum / WHEEL_THRESHOLD), true);
 
       clearTimeout(wheelState.decayTimer);
       wheelState.decayTimer = setTimeout(() => {
-        if (!wheelState.consumed) {
+        if (!wheelState.consumed && !isAdvancingRef.current) {
           wheelState.accum = 0;
-          setPullProgress(0);
+          applyDragVisuals(0, false);
         }
-      }, 320);
+      }, 280);
 
       if (wheelState.accum >= WHEEL_THRESHOLD) {
         wheelState.consumed = true;
         wheelState.accum = 0;
-        setPullProgress(0);
         registerFooterDrag();
       }
     };
 
-    // 4. Reset armed count if user scrolls far away from the footer
+    // 4. Reset armed count if user scrolls away from the footer
     const onScroll = () => {
-      if (pullCountRef.current > 0 && !isNearBottom(320)) {
+      if (pullCountRef.current <= 0 || isAdvancingRef.current) return;
+      const footerTop = footerRef.current?.getBoundingClientRect().top ?? Infinity;
+      if (footerTop > window.innerHeight * 0.85 && !isNearBottom(320)) {
         clearTimeout(resetTimerRef.current);
         updatePullCount(0);
-        setPullProgress(0);
+        applyDragVisuals(0, false);
       }
     };
 
@@ -333,6 +505,7 @@ export default function A24FocalDeepDive({
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerEnd);
     window.addEventListener('pointercancel', onPointerEnd);
+    window.addEventListener('blur', onPointerEnd);
     window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('touchmove', onTouchMove, { passive: true });
     window.addEventListener('touchend', onTouchEnd);
@@ -341,10 +514,12 @@ export default function A24FocalDeepDive({
     window.addEventListener('scroll', onScroll, { passive: true });
 
     return () => {
+      document.body.style.cursor = '';
       window.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerEnd);
       window.removeEventListener('pointercancel', onPointerEnd);
+      window.removeEventListener('blur', onPointerEnd);
       window.removeEventListener('touchstart', onTouchStart);
       window.removeEventListener('touchmove', onTouchMove);
       window.removeEventListener('touchend', onTouchEnd);
@@ -353,7 +528,7 @@ export default function A24FocalDeepDive({
       window.removeEventListener('scroll', onScroll);
       clearTimeout(wheelState.decayTimer);
     };
-  }, [registerFooterDrag, updatePullCount]);
+  }, [registerFooterDrag, updatePullCount, applyDragVisuals]);
 
   // Step controls
   const handleStepForward = () => {
@@ -373,13 +548,14 @@ export default function A24FocalDeepDive({
 
   return (
     <div
-      className={`min-h-screen transition-colors duration-500 select-text pb-24 ${
-        isDark ? 'bg-[#07070a] text-[#f3f1ea]' : 'bg-[#f2f2f2] text-[#0d0d11]'
+      ref={pageRootRef}
+      className={`min-h-screen bg-transparent transition-colors duration-500 select-text ${
+        isDark ? 'text-[#f3f1ea]' : 'text-[#0d0d11]'
       }`}
     >
       {/* STICKY LUXURY EDITORIAL HEADER */}
       <header
-        className={`sticky top-0 z-50 backdrop-blur-md border-b px-6 md:px-12 py-4 flex items-center justify-between transition-colors ${
+        className={`sticky top-0 z-50 transform-gpu backdrop-blur-md border-b px-6 md:px-12 py-4 flex items-center justify-between transition-colors ${
           isDark
             ? 'bg-[#07070a]/90 border-[#24242e] text-[#f3f1ea]'
             : 'bg-[#f2f2f2]/90 border-[#0d0d11]/15 text-[#0d0d11]'
@@ -414,7 +590,7 @@ export default function A24FocalDeepDive({
                 playButtonSnap();
                 onToggleTheme();
               }}
-              className={`p-2 border transition-all ${
+              className={`p-2 border transition-[color,background-color,border-color] ${
                 isDark
                   ? 'border-[#24242e] text-[#8c8b94] hover:text-[#f3f1ea]'
                   : 'border-[#0d0d11]/20 text-[#6b6a72] hover:text-[#0d0d11]'
@@ -431,7 +607,7 @@ export default function A24FocalDeepDive({
               const newMute = toggleMute();
               setMuted(newMute);
             }}
-            className={`p-2 border transition-all ${
+            className={`p-2 border transition-[color,background-color,border-color] ${
               isDark
                 ? 'border-[#24242e] text-[#8c8b94] hover:text-[#f3f1ea]'
                 : 'border-[#0d0d11]/20 text-[#6b6a72] hover:text-[#0d0d11]'
@@ -447,7 +623,7 @@ export default function A24FocalDeepDive({
               playButtonSnap();
               onClose();
             }}
-            className={`p-2 border transition-all ${
+            className={`p-2 border transition-[color,background-color,border-color] ${
               isDark
                 ? 'border-[#24242e] text-[#8c8b94] hover:text-[#f3f1ea]'
                 : 'border-[#0d0d11]/20 text-[#6b6a72] hover:text-[#0d0d11]'
@@ -461,7 +637,7 @@ export default function A24FocalDeepDive({
 
       {/* SECTION 1: PRODUCTION HERO (a24.raviklaassens.com / #production_hero) */}
       <section
-        className={`px-6 md:px-16 lg:px-24 pt-12 pb-16 border-b transition-colors ${
+        className={`animate-focal-enter px-6 md:px-16 lg:px-24 pt-12 pb-16 border-b transition-colors ${
           isDark ? 'border-[#24242e]' : 'border-[#0d0d11]/15'
         }`}
       >
@@ -540,6 +716,8 @@ export default function A24FocalDeepDive({
                 className="absolute inset-0 pointer-events-none opacity-20 blur-3xl"
                 style={{
                   background: `radial-gradient(circle, ${item.accentColor || '#891a20'}, transparent 70%)`,
+                  transform: 'translateZ(0)',
+                  willChange: 'transform, opacity',
                 }}
               />
               <A24PhysicalDisc
@@ -554,7 +732,7 @@ export default function A24FocalDeepDive({
               <div className="mt-8 flex items-center space-x-3 z-10">
                 <button
                   onClick={() => setIsSpinning(!isSpinning)}
-                  className={`flex items-center space-x-2.5 px-6 py-2.5 border text-xs font-mono-tech uppercase tracking-[0.2em] font-medium transition-all ${
+                  className={`flex items-center space-x-2.5 px-6 py-2.5 border text-xs font-mono-tech uppercase tracking-[0.2em] font-medium transition-[color,background-color,border-color] ${
                     isDark
                       ? 'border-[#24242e] text-[#8c8b94] hover:text-[#f3f1ea] hover:border-[#f3f1ea]'
                       : 'border-[#0d0d11]/20 text-[#6b6a72] hover:text-[#0d0d11] hover:border-[#0d0d11]'
@@ -632,7 +810,7 @@ export default function A24FocalDeepDive({
 
       {/* SECTION 2: INTERACTIVE HARDWARE & SIMULATION SUITE */}
       <section
-        className={`px-6 md:px-16 lg:px-24 py-16 border-b transition-colors ${
+        className={`animate-focal-enter px-6 md:px-16 lg:px-24 py-16 border-b transition-colors ${
           isDark ? 'border-[#24242e]' : 'border-[#0d0d11]/15'
         }`}
       >
@@ -672,7 +850,7 @@ export default function A24FocalDeepDive({
                       playVinylClick();
                       setActiveTab(tab.id);
                     }}
-                    className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-mono-tech uppercase tracking-[0.16em] transition-all ${
+                    className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-mono-tech uppercase tracking-[0.16em] transition-[color,background-color] ${
                       isSelected
                         ? isDark
                           ? 'bg-[#f3f1ea] text-[#07070a] font-bold shadow'
@@ -824,7 +1002,7 @@ export default function A24FocalDeepDive({
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={handleStepForward}
-                    className={`px-3 py-1.5 border text-xs font-mono-tech uppercase tracking-[0.16em] transition-all ${
+                    className={`px-3 py-1.5 border text-xs font-mono-tech uppercase tracking-[0.16em] transition-[color,background-color,border-color] ${
                       isDark
                         ? 'border-[#24242e] hover:bg-[#f3f1ea] hover:text-[#07070a]'
                         : 'border-[#0d0d11]/20 hover:bg-[#0d0d11] hover:text-[#f2f2f2]'
@@ -834,7 +1012,7 @@ export default function A24FocalDeepDive({
                   </button>
                   <button
                     onClick={handleStepReset}
-                    className={`p-1.5 border transition-all ${
+                    className={`p-1.5 border transition-[color,background-color,border-color] ${
                       isDark
                         ? 'border-[#24242e] text-[#8c8b94] hover:text-[#f3f1ea]'
                         : 'border-[#0d0d11]/20 text-[#6b6a72] hover:text-[#0d0d11]'
@@ -914,9 +1092,27 @@ export default function A24FocalDeepDive({
       </section>
 
       {/* SECTION 3: "UP NEXT" ENDLESS CRATE NAVIGATION (a24.raviklaassens.com / [data-scroll-next]) */}
-      <section ref={footerRef} onDragStart={(e) => e.preventDefault()} className="px-6 md:px-16 lg:px-24 pt-20 select-none cursor-grab active:cursor-grabbing">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col items-center text-center transition-transform duration-200 ease-out" style={{ transform: pullProgress > 0 ? `translateY(-${Math.round(pullProgress * 18)}px)` : 'translateY(0px)' }}>
+      <section
+        ref={footerRef}
+        onDragStart={(e) => e.preventDefault()}
+        className="relative overflow-hidden px-6 md:px-16 lg:px-24 pt-24 pb-28 min-h-[75vh] flex flex-col justify-center select-none cursor-grab active:cursor-grabbing"
+      >
+        {/* Full-Section Ambient Spotlight That Responds to Drag Tension */}
+        <div
+          ref={footerGlowRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            opacity: footerPullCount >= 1 ? 0.14 : 0.04,
+            background: `radial-gradient(ellipse 65% 55% at 50% 52%, ${nextItem.accentColor || '#891a20'}, transparent 72%)`,
+          }}
+        />
+
+        <div className="relative z-10 w-full max-w-7xl mx-auto">
+          <div
+            ref={footerStageRef}
+            className="flex flex-col items-center text-center will-change-[transform,opacity]"
+          >
             {/* Animated Hint Arrow */}
             <div
               className={`mb-3 animate-scroll-hint ${footerPullCount >= 1 ? '!text-[#891a20] ' : ''}${
@@ -927,23 +1123,27 @@ export default function A24FocalDeepDive({
             </div>
 
             <p
-              className={`text-xs font-mono-tech uppercase tracking-[0.3em] mb-2 ${
-                isDark ? 'text-[#8c8b94]' : 'text-[#6b6a72]'
+              className={`text-xs font-mono-tech uppercase tracking-[0.3em] mb-2 transition-colors ${
+                footerPullCount >= 1
+                  ? 'text-[#891a20] font-bold'
+                  : isDark
+                  ? 'text-[#8c8b94]'
+                  : 'text-[#6b6a72]'
               }`}
             >
-              UP NEXT IN ARCHIVE
+              {footerPullCount >= 1
+                ? 'UP NEXT IN ARCHIVE · DRAG 1/2 ARMED'
+                : 'UP NEXT IN ARCHIVE'}
             </p>
 
             <button
               onClick={() => {
                 if (didDragRef.current) return;
-                playVinylClick();
-                onSelectNext(nextItem);
-                window.scrollTo({ top: 0, behavior: 'auto' });
+                triggerNextCard();
               }}
               className="group flex flex-col items-center focus:outline-none"
             >
-              <h3 className="text-6xl sm:text-8xl font-tall font-bold uppercase tracking-tight group-hover:underline transition-all">
+              <h3 className="text-6xl sm:text-8xl font-tall font-bold uppercase tracking-tight group-hover:underline transition-colors">
                 {nextItem.title}
               </h3>
               <p
@@ -956,20 +1156,22 @@ export default function A24FocalDeepDive({
                 {nextItem.aka}
               </p>
 
-              <div className="mt-8 transform group-hover:scale-110 transition-transform duration-500">
-                <A24PhysicalDisc
-                  item={nextItem}
-                  isActive={false}
-                  isSpinning={false}
-                  size={180}
-                  showScribble={false}
-                  showNumberTag={false}
-                  theme={theme}
-                />
+              <div ref={footerDiscRef} className="mt-8 will-change-transform">
+                <div className="transform group-hover:scale-105 transition-transform duration-500">
+                  <A24PhysicalDisc
+                    item={nextItem}
+                    isActive={false}
+                    isSpinning={false}
+                    size={180}
+                    showScribble={false}
+                    showNumberTag={false}
+                    theme={theme}
+                  />
+                </div>
               </div>
 
               <span
-                className={`mt-8 inline-flex items-center space-x-2.5 px-6 py-3 border text-xs font-mono-tech uppercase tracking-[0.2em] font-medium transition-all ${
+                className={`mt-8 inline-flex items-center space-x-2.5 px-6 py-3 border text-xs font-mono-tech uppercase tracking-[0.2em] font-medium transition-[color,background-color,border-color] ${
                   isDark
                     ? 'border-[#24242e] bg-[#0c0c12] text-[#8c8b94] group-hover:text-[#f3f1ea] group-hover:border-[#f3f1ea]'
                     : 'border-[#0d0d11]/20 bg-[#f5f4ef] text-[#6b6a72] group-hover:text-[#0d0d11] group-hover:border-[#0d0d11]'
@@ -983,36 +1185,43 @@ export default function A24FocalDeepDive({
             {/* Two-Stage Footer Long-Drag Progress Gauge (0/2 -> 1/2 -> Switch) */}
             <div className="mt-7 flex flex-col items-center space-y-2.5">
               <div className="flex items-center space-x-2">
-                {[0, 1].map((stage) => {
-                  const isCompleted = footerPullCount > stage;
-                  const isActiveStage = footerPullCount === stage;
-                  const fillPct = isCompleted
-                    ? 100
-                    : isActiveStage
-                    ? Math.round(pullProgress * 100)
-                    : 0;
-                  return (
-                    <div
-                      key={stage}
-                      className={`w-20 h-1 overflow-hidden transition-colors ${
-                        isDark ? 'bg-[#24242e]' : 'bg-[#0d0d11]/15'
-                      }`}
-                    >
-                      <div
-                        className={`h-full transition-all duration-100 ${
-                          footerPullCount >= 1
-                            ? 'bg-[#891a20]'
-                            : isDark
-                            ? 'bg-[#f3f1ea]'
-                            : 'bg-[#0d0d11]'
-                        }`}
-                        style={{ width: `${fillPct}%` }}
-                      />
-                    </div>
-                  );
-                })}
+                <div
+                  className={`w-20 h-1 overflow-hidden transition-colors ${
+                    isDark ? 'bg-[#24242e]' : 'bg-[#0d0d11]/15'
+                  }`}
+                >
+                  <div
+                    ref={bar0Ref}
+                    className={`h-full ${
+                      footerPullCount >= 1
+                        ? 'bg-[#891a20]'
+                        : isDark
+                        ? 'bg-[#f3f1ea]'
+                        : 'bg-[#0d0d11]'
+                    }`}
+                    style={{ width: footerPullCount >= 1 ? '100%' : '0%' }}
+                  />
+                </div>
+                <div
+                  className={`w-20 h-1 overflow-hidden transition-colors ${
+                    isDark ? 'bg-[#24242e]' : 'bg-[#0d0d11]/15'
+                  }`}
+                >
+                  <div
+                    ref={bar1Ref}
+                    className={`h-full ${
+                      footerPullCount >= 1
+                        ? 'bg-[#891a20]'
+                        : isDark
+                        ? 'bg-[#f3f1ea]'
+                        : 'bg-[#0d0d11]'
+                    }`}
+                    style={{ width: footerPullCount >= 2 ? '100%' : '0%' }}
+                  />
+                </div>
               </div>
               <span
+                ref={statusLabelRef}
                 className={`text-[10px] font-mono-tech uppercase tracking-[0.22em] transition-colors ${
                   footerPullCount >= 1
                     ? 'text-[#891a20] font-bold'
@@ -1024,9 +1233,7 @@ export default function A24FocalDeepDive({
                 {footerPullCount >= 2
                   ? `SWITCHING TO ${nextItem.title}...`
                   : footerPullCount === 1
-                  ? `DRAG 1 / 2 · LONG DRAG AGAIN AT FOOTER FOR ${nextItem.title}`
-                  : pullProgress > 0.05
-                  ? `PULLING 1 / 2 · KEEP DRAGGING (${Math.round(pullProgress * 100)}%)`
+                  ? `DRAG 1 / 2 ARMED · LONG DRAG AGAIN FOR ${nextItem.title}`
                   : 'LONG DRAG TWICE AT FOOTER TO SWITCH CARD'}
               </span>
             </div>
@@ -1035,4 +1242,6 @@ export default function A24FocalDeepDive({
       </section>
     </div>
   );
-}
+});
+
+export default A24FocalDeepDive;

@@ -245,6 +245,28 @@
   animation: scroll-next-hint 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
+/* Smooth Deep-Dive Card Entrance Transition */
+@keyframes focal-stage-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 26px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-focal-enter {
+  animation: focal-stage-enter 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-focal-enter {
+    animation: none;
+  }
+}
+
 /* Hairline horizontal divider */
 .divider-horizontal {
   width: 100%;

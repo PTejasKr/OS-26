@@ -13,6 +13,8 @@ import { playVinylClick } from '../utils/soundEffects';
  * - True physical 3D arch with apex elevation, tangential slope rotation, and 3D yaw.
  * - Full mouse drag, wheel scroll, keyboard arrows, and navigation buttons.
  */
+const EMPTY_ITEM = {};
+
 const A24CrateGallery = React.memo(function A24CrateGallery({
   catalog,
   activeIndex,
@@ -22,7 +24,10 @@ const A24CrateGallery = React.memo(function A24CrateGallery({
   onSelectCategory,
   theme = 'base', // 'base' or 'dark'
 }) {
-  const activeItem = catalog[activeIndex] || catalog[0] || {};
+  const activeItem = useMemo(
+    () => catalog[activeIndex] || catalog[0] || EMPTY_ITEM,
+    [catalog, activeIndex]
+  );
   const isDark = theme === 'dark';
   const total = catalog.length;
 
