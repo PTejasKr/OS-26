@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import A24NavBar from './components/A24NavBar';
 import A24CrateGallery from './components/A24CrateGallery';
 import A24FocalDeepDive from './components/A24FocalDeepDive';
@@ -58,11 +58,11 @@ export default function App() {
 
       {/* CONDITIONAL RENDER: FOCAL DEEP-DIVE TAKEOVER OR HORIZONTAL RECORD CRATE */}
       {focalItem ? (
-        <A24FocalDeepDive
+        <A24FocalDeepDive key={focalItem.id}
           item={focalItem}
           catalog={A24_CATALOG}
           onClose={() => setFocalItem(null)}
-          onSelectNext={(next) => setFocalItem(next)}
+          onSelectNext={(next) => { setFocalItem(next); window.scrollTo({ top: 0, behavior: 'auto' }); }}
           theme={theme}
           onToggleTheme={handleToggleTheme}
         />
@@ -134,7 +134,7 @@ export default function App() {
                         playButtonSnap();
                         setActiveStudioTab(isSelected ? 'none' : studio.id);
                       }}
-                      className={`p-6 border transition-all cursor-pointer ${
+                      className={`p-6 border transition-[color,background-color,border-color] cursor-pointer ${
                         isSelected
                           ? isDark
                             ? 'bg-[#f3f1ea] text-[#07070a] border-[#f3f1ea]'

@@ -9,7 +9,7 @@ import { toggleMute, isMuted, playButtonSnap } from '../utils/soundEffects';
  * - Studio / Cinema theme switcher
  * - Audio state toggle
  */
-export default function A24NavBar({
+const A24NavBar = React.memo(function A24NavBar({
   activeMatrix = 'OS26-DS-01',
   theme = 'base',
   onToggleTheme,
@@ -19,7 +19,7 @@ export default function A24NavBar({
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-40 backdrop-blur-md border-b px-6 md:px-12 py-3.5 transition-colors duration-400 ${
+      className={`fixed top-0 left-0 right-0 z-40 transform-gpu backdrop-blur-md border-b px-6 md:px-12 py-3.5 transition-colors duration-400 ${
         isDark
           ? 'bg-[#07070a]/90 border-[#24242e] text-[#f3f1ea]'
           : 'bg-[#f2f2f2]/90 border-[#0d0d11]/15 text-[#0d0d11]'
@@ -41,7 +41,7 @@ export default function A24NavBar({
               playButtonSnap();
               onToggleTheme();
             }}
-            className={`h-9 px-3 border transition-all text-xs font-mono-tech uppercase flex items-center justify-center space-x-1.5 ${
+            className={`h-9 px-3 border transition-[color,background-color,border-color] text-xs font-mono-tech uppercase flex items-center justify-center space-x-1.5 ${
               isDark
                 ? 'border-[#24242e] text-[#8c8b94] hover:text-[#f3f1ea] hover:border-[#8c8b94]'
                 : 'border-[#0d0d11]/20 text-[#6b6a72] hover:text-[#0d0d11] hover:border-[#0d0d11]'
@@ -60,7 +60,7 @@ export default function A24NavBar({
               const newMute = toggleMute();
               setMuted(newMute);
             }}
-            className={`w-9 h-9 border flex items-center justify-center transition-all ${
+            className={`w-9 h-9 border flex items-center justify-center transition-[color,background-color,border-color] ${
               isDark
                 ? 'border-[#24242e] text-[#8c8b94] hover:text-[#f3f1ea] hover:border-[#8c8b94]'
                 : 'border-[#0d0d11]/20 text-[#6b6a72] hover:text-[#0d0d11] hover:border-[#0d0d11]'
@@ -73,4 +73,6 @@ export default function A24NavBar({
       </div>
     </nav>
   );
-}
+});
+
+export default A24NavBar;

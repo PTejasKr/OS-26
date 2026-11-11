@@ -14,7 +14,7 @@ import React from 'react';
  *   square corner bleeding artifacts in 3D-transformed and hardware-composited deployment contexts.
  * - Stacking context isolation (isolation: isolate) to avoid blend mode bleed.
  */
-export default function A24PhysicalDisc({
+const A24PhysicalDisc = React.memo(function A24PhysicalDisc({
   item,
   isActive = false,
   isSpinning = false,
@@ -28,10 +28,21 @@ export default function A24PhysicalDisc({
   const isDark = theme === 'dark';
   const scribbleStroke = isDark ? '#f3f1ea' : '#111116';
 
+  // Proportional sizing & layout scaling based on disc diameter (reference: 280px)
+  const scale = size / 280;
+  const isSmall = size < 220;
+  const titleFontSize = Math.max(15, Math.min(isSmall ? 22 : 46, Math.round((isSmall ? 24 : 44) * scale)));
+  const categoryFontSize = Math.max(6.5, Math.round(9.5 * scale));
+  const akaFontSize = Math.max(7, Math.round(9.5 * scale));
+  const rimTopFontSize = Math.max(6.5, Math.round(9 * scale));
+  const rimBottomFontSize = Math.max(6, Math.round(8 * scale));
+  const discPadding = Math.max(8, Math.round(16 * scale));
+  const maxCenterWidth = Math.round(size * 0.72);
+
   return (
     <div
       onClick={onClick}
-      className={`relative select-none cursor-pointer group flex flex-col items-center transition-all duration-500 ${className}`}
+      className={`relative select-none cursor-pointer group flex flex-col items-center ${className}`}
       style={{
         width: `${size}px`,
         isolation: 'isolate',
@@ -70,27 +81,39 @@ export default function A24PhysicalDisc({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 opacity="0.95"
+                style={{ transition: 'stroke 0.5s ease' }}
               />
             </svg>
           </div>
         )}
 
-        {/* The Outer Shadow Carrier (rounded-full without overflow-hidden so soft shadow spreads naturally) */}
-        <div
-          className={`w-full h-full rounded-full transition-all duration-500 ease-out group-hover:scale-105`}
-          style={{
-            boxShadow: isActive
-              ? isDark
+        {/* The Outer Shadow Carrier (uses GPU opacity crossfade between static pre-rasterized shadows instead of mutating box-shadow per frame) */}
+        <div className="w-full h-full rounded-full relative transition-transform duration-500 ease-out group-hover:scale-105">
+          {/* Pre-rasterized Light Shadow Layer */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-full transition-opacity duration-500 ease-out will-change-[opacity]"
+            style={{
+              opacity: isDark ? 0 : 1,
+              boxShadow: isActive
+                ? '0 30px 60px -15px rgba(0, 0, 0, 0.45), 0 10px 25px -5px rgba(0, 0, 0, 0.3)'
+                : '0 16px 30px -8px rgba(0, 0, 0, 0.25)',
+            }}
+          />
+          {/* Pre-rasterized Dark Shadow Layer */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-full transition-opacity duration-500 ease-out will-change-[opacity]"
+            style={{
+              opacity: isDark ? 1 : 0,
+              boxShadow: isActive
                 ? '0 25px 50px -12px rgba(0, 0, 0, 0.95), 0 0 35px rgba(243, 241, 234, 0.2)'
-                : '0 30px 60px -15px rgba(0, 0, 0, 0.45), 0 10px 25px -5px rgba(0, 0, 0, 0.3)'
-              : isDark
-              ? '0 20px 35px -10px rgba(0, 0, 0, 0.75)'
-              : '0 16px 30px -8px rgba(0, 0, 0, 0.25)',
-          }}
-        >
+                : '0 20px 35px -10px rgba(0, 0, 0, 0.75)',
+            }}
+          />
           {/* The Physical Disc Body (Strictly GPU-Clipped to Circle to eliminate WebKit/Chromium square corner bleeding) */}
           <div
-            className={`w-full h-full rounded-full relative overflow-hidden border border-[#3a3a46]/50 transition-transform duration-500 ${
+            className={`w-full h-full rounded-full relative overflow-hidden border border-[#3a3a46]/50 ${
               isSpinning ? 'animate-spin-disc' : ''
             }`}
             style={{
@@ -132,32 +155,61 @@ export default function A24PhysicalDisc({
             />
 
             {/* Layer 4: Silkscreen Artwork & Rim Typography */}
-            <div className="absolute inset-0 p-4 flex flex-col justify-between pointer-events-none">
+            <div
+              className="absolute inset-0 flex flex-col justify-between pointer-events-none"
+              style={{ padding: `${discPadding}px` }}
+            >
               {/* Top Rim Text */}
-              <div className="w-full flex justify-between items-center text-[9px] tracking-[0.2em] uppercase font-mono-tech text-[#f3f1ea]/85 px-4 pt-2">
+              <div
+                className="w-full flex justify-between items-center tracking-[0.2em] uppercase font-mono-tech text-[#f3f1ea]/85 px-2"
+                style={{ fontSize: `${rimTopFontSize}px` }}
+              >
                 <span>{item.matrixCode}</span>
                 <span>{item.year}</span>
               </div>
 
               {/* Central Title Bar Across Disc */}
-              <div className="w-full flex flex-col items-center justify-center my-auto px-4 text-center z-10">
-                <span className="text-[10px] tracking-[0.3em] font-mono-tech uppercase text-[#f3f1ea]/70 mb-0.5">
+              <div
+                className="w-full flex flex-col items-center justify-center my-auto px-2 text-center z-10 mx-auto"
+                style={{ maxWidth: `${maxCenterWidth}px` }}
+              >
+                <span
+                  className="tracking-[0.25em] font-mono-tech uppercase text-[#f3f1ea]/70"
+                  style={{
+                    fontSize: `${categoryFontSize}px`,
+                    marginBottom: `${Math.max(1, Math.round(2 * scale))}px`,
+                  }}
+                >
                   {item.category}
                 </span>
                 <h3
-                  className="text-4xl md:text-5xl font-tall font-bold tracking-wider text-[#f3f1ea] drop-shadow-md leading-none"
-                  style={{ textShadow: '0 2px 10px rgba(0,0,0,0.85)' }}
+                  className="font-tall font-bold tracking-wider text-[#f3f1ea] drop-shadow-md uppercase text-center"
+                  style={{
+                    fontSize: `${titleFontSize}px`,
+                    lineHeight: 0.92,
+                    textShadow: '0 2px 10px rgba(0,0,0,0.85)',
+                    wordBreak: 'break-word',
+                  }}
                 >
                   {item.title}
                 </h3>
-                <span className="text-[10px] font-normal tracking-wide text-[#f3f1ea]/90 mt-1 max-w-[180px] truncate">
+                <span
+                  className="font-normal tracking-wide text-[#f3f1ea]/90 truncate w-full text-center"
+                  style={{
+                    fontSize: `${akaFontSize}px`,
+                    marginTop: `${Math.max(2, Math.round(4 * scale))}px`,
+                  }}
+                >
                   {item.aka}
                 </span>
               </div>
 
               {/* Bottom Rim Text */}
-              <div className="w-full flex justify-between items-center text-[8px] tracking-[0.16em] uppercase font-mono-tech text-[#f3f1ea]/75 px-4 pb-2">
-                <span className="max-w-[110px] truncate">{item.category}</span>
+              <div
+                className="w-full flex justify-between items-center tracking-[0.16em] uppercase font-mono-tech text-[#f3f1ea]/75 px-2"
+                style={{ fontSize: `${rimBottomFontSize}px` }}
+              >
+                <span className="truncate max-w-[50%]">{item.category}</span>
                 <span>{item.runtime}</span>
               </div>
             </div>
@@ -204,7 +256,7 @@ export default function A24PhysicalDisc({
       {showNumberTag && (
         <div className="mt-3 text-center pointer-events-none">
           <span
-            className={`text-[11px] font-mono-tech tracking-[0.25em] transition-colors ${
+            className={`text-[11px] font-mono-tech tracking-[0.25em] transition-colors duration-500 ${
               isDark
                 ? 'text-[#8c8b94] group-hover:text-[#f3f1ea]'
                 : 'text-[#6b6a72] group-hover:text-[#0d0d11]'
@@ -216,4 +268,6 @@ export default function A24PhysicalDisc({
       )}
     </div>
   );
-}
+});
+
+export default A24PhysicalDisc;

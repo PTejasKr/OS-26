@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 // Halftone Wordmark Footer — a site footer whose wordmark is set enormous and
 // cropped by the bottom edge, printed as a field of halftone dots. Each dot is
@@ -117,12 +117,34 @@ export function hwfWarmth(x, y, hx, hy, span) {
 export function hwfFitSize(measured, width) {
   return measured > 0 ? (width / measured) * 100 : 0;
 }
+
+// Cache the 256x256 grain tile once per session rather than regenerating 65k random pixels on resize/theme change.
+let sharedGrainTile = null;
+function getGrainTile() {
+  if (sharedGrainTile || typeof document === "undefined") return sharedGrainTile;
+  const tile = document.createElement("canvas");
+  tile.width = 256;
+  tile.height = 256;
+  const g = tile.getContext("2d");
+  if (g) {
+    const id = g.createImageData(256, 256);
+    for (let i = 0; i < id.data.length; i += 4) {
+      const v = Math.random() * 255;
+      id.data[i] = id.data[i + 1] = id.data[i + 2] = v;
+      id.data[i + 3] = Math.random() < 0.5 ? 0 : 255;
+    }
+    g.putImageData(id, 0, 0);
+  }
+  sharedGrainTile = tile;
+  return sharedGrainTile;
+}
 // #endregion
 
 const HWF_CSS = `
 .hwf-root {
   position: relative; width: 100%; overflow: hidden; isolation: isolate;
   background: var(--hwf-bg); color: var(--hwf-ink); -webkit-font-smoothing: antialiased;
+  transition: background-color .5s cubic-bezier(.4, 0, .2, 1), color .5s cubic-bezier(.4, 0, .2, 1);
 }
 .hwf-root canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; max-width: none; }
 .hwf-top {
@@ -158,7 +180,10 @@ const HWF_CSS = `
 }
 `;
 
-export default function HalftoneWordmarkFooter({
+const rgbStr = (c) =>
+  `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})`;
+
+const HalftoneWordmarkFooter = React.memo(function HalftoneWordmarkFooter({
   wordmark = "OS/26",
   label = "OS/26",
   meta = "THE PHYSICAL STORAGE ALGORITHM ARCHIVE · 2026",
@@ -180,6 +205,25 @@ export default function HalftoneWordmarkFooter({
   const colors = { ...(PRESETS[preset] || PRESETS.night), ...(palette || {}) };
   const rootRef = React.useRef(null);
   const canvasRef = React.useRef(null);
+  const wakeRef = React.useRef(() => {});
+
+  const initialBg = hwfHex(colors.background) || [12, 12, 11];
+  const initialInk = hwfHex(colors.ink) || [233, 228, 218];
+  const initialWarm = hwfHex(colors.warm) || [233, 118, 43];
+
+  const colorStateRef = React.useRef({
+    currBg: initialBg,
+    currInk: initialInk,
+    currWarm: initialWarm,
+    fromBg: initialBg,
+    fromInk: initialInk,
+    fromWarm: initialWarm,
+    targetBg: initialBg,
+    targetInk: initialInk,
+    targetWarm: initialWarm,
+    animStart: -1,
+  });
+
   const opts = React.useRef({
     colors,
     dotGap,
@@ -202,17 +246,44 @@ export default function HalftoneWordmarkFooter({
     fontWeight,
     wordmark,
   };
-  const key = [
+
+  // Only geometric props require re-measuring text and regenerating the dot field.
+  // Theme color updates happen in-place without stalling the main thread or calling getImageData().
+  const layoutKey = [
     wordmark,
     dotGap,
     crop,
-    grain,
     fontFamily,
     fontWeight,
-    colors.background,
-    colors.ink,
-    colors.warm,
   ].join("|");
+
+  React.useEffect(() => {
+    const cs = colorStateRef.current;
+    const nextBg = hwfHex(colors.background) || [12, 12, 11];
+    const nextInk = hwfHex(colors.ink) || [233, 228, 218];
+    const nextWarm = hwfHex(colors.warm) || [233, 118, 43];
+
+    const same =
+      cs.targetBg[0] === nextBg[0] &&
+      cs.targetBg[1] === nextBg[1] &&
+      cs.targetBg[2] === nextBg[2] &&
+      cs.targetInk[0] === nextInk[0] &&
+      cs.targetInk[1] === nextInk[1] &&
+      cs.targetInk[2] === nextInk[2] &&
+      cs.targetWarm[0] === nextWarm[0] &&
+      cs.targetWarm[1] === nextWarm[1] &&
+      cs.targetWarm[2] === nextWarm[2];
+    if (same) return;
+
+    cs.fromBg = [cs.currBg[0], cs.currBg[1], cs.currBg[2]];
+    cs.fromInk = [cs.currInk[0], cs.currInk[1], cs.currInk[2]];
+    cs.fromWarm = [cs.currWarm[0], cs.currWarm[1], cs.currWarm[2]];
+    cs.targetBg = nextBg;
+    cs.targetInk = nextInk;
+    cs.targetWarm = nextWarm;
+    cs.animStart = performance.now();
+    wakeRef.current();
+  }, [colors.background, colors.ink, colors.warm]);
 
   React.useEffect(() => {
     const root = rootRef.current;
@@ -235,10 +306,10 @@ export default function HalftoneWordmarkFooter({
     let ring = { x: 0, y: 0, t: -1 };
     // Flat arrays: x, y, vx, vy, hx, hy, r per dot.
     let dots = new Float32Array(0);
+    let warmIdx = new Uint32Array(0);
+    let warmK = new Float32Array(0);
     let count = 0;
-    let grainTile = null;
-    const ink = hwfHex(opts.current.colors.ink) || [233, 228, 218];
-    const warm = hwfHex(opts.current.colors.warm) || [233, 118, 43];
+    let grainPattern = null;
 
     const layout = () => {
       const o = opts.current;
@@ -298,34 +369,64 @@ export default function HalftoneWordmarkFooter({
       }
       dots = new Float32Array(tmp);
       count = tmp.length / 7;
+      warmIdx = new Uint32Array(count);
+      warmK = new Float32Array(count);
 
-      // A fixed tile of print grain, drawn once and laid over every frame.
-      grainTile = document.createElement("canvas");
-      grainTile.width = 256;
-      grainTile.height = 256;
-      const g = grainTile.getContext("2d");
-      if (g) {
-        const id = g.createImageData(256, 256);
-        for (let i = 0; i < id.data.length; i += 4) {
-          const v = Math.random() * 255;
-          id.data[i] = id.data[i + 1] = id.data[i + 2] = v;
-          id.data[i + 3] = Math.random() < 0.5 ? 0 : 255;
-        }
-        g.putImageData(id, 0, 0);
-      }
+      // Reuse shared grain tile and cache the CanvasPattern once per context layout.
+      const tile = getGrainTile();
+      grainPattern = tile ? ctx.createPattern(tile, "repeat") : null;
       awake = true;
     };
 
     const draw = (now) => {
       const o = opts.current;
+      const cs = colorStateRef.current;
+
+      // Smoothly track color crossfade synced with the site's 500ms theme transition.
+      let colorTransitioning = false;
+      if (cs.animStart >= 0) {
+        const rawT = reduced ? 1 : Math.min(1, Math.max(0, (now - cs.animStart) / 500));
+        if (rawT >= 1) {
+          cs.currBg = [cs.targetBg[0], cs.targetBg[1], cs.targetBg[2]];
+          cs.currInk = [cs.targetInk[0], cs.targetInk[1], cs.targetInk[2]];
+          cs.currWarm = [cs.targetWarm[0], cs.targetWarm[1], cs.targetWarm[2]];
+          cs.animStart = -1;
+        } else {
+          // Matches CSS cubic-bezier(0.4, 0, 0.2, 1) feel cleanly
+          const t =
+            rawT < 0.5
+              ? 4 * rawT * rawT * rawT
+              : 1 - Math.pow(-2 * rawT + 2, 3) / 2;
+          cs.currBg[0] = cs.fromBg[0] + (cs.targetBg[0] - cs.fromBg[0]) * t;
+          cs.currBg[1] = cs.fromBg[1] + (cs.targetBg[1] - cs.fromBg[1]) * t;
+          cs.currBg[2] = cs.fromBg[2] + (cs.targetBg[2] - cs.fromBg[2]) * t;
+          cs.currInk[0] = cs.fromInk[0] + (cs.targetInk[0] - cs.fromInk[0]) * t;
+          cs.currInk[1] = cs.fromInk[1] + (cs.targetInk[1] - cs.fromInk[1]) * t;
+          cs.currInk[2] = cs.fromInk[2] + (cs.targetInk[2] - cs.fromInk[2]) * t;
+          cs.currWarm[0] = cs.fromWarm[0] + (cs.targetWarm[0] - cs.fromWarm[0]) * t;
+          cs.currWarm[1] = cs.fromWarm[1] + (cs.targetWarm[1] - cs.fromWarm[1]) * t;
+          cs.currWarm[2] = cs.fromWarm[2] + (cs.targetWarm[2] - cs.fromWarm[2]) * t;
+          colorTransitioning = true;
+        }
+      }
+
+      const ink = cs.currInk;
+      const warm = cs.currWarm;
+
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.fillStyle = o.colors.background;
+      ctx.fillStyle = colorTransitioning ? rgbStr(cs.currBg) : o.colors.background;
       ctx.fillRect(0, 0, w, h);
 
       const r = o.interactive && !reduced ? Math.max(0, o.radius) : 0;
       const ringAge = ring.t < 0 ? 1e9 : now - ring.t;
       const ringR = ringAge * 0.9;
       let moving = false;
+      let warmCount = 0;
+
+      // Batch all resting dots into a single canvas fill path for >10x faster 2D canvas draws.
+      ctx.fillStyle = colorTransitioning ? rgbStr(ink) : o.colors.ink;
+      ctx.beginPath();
+
       for (let i = 0; i < count; i++) {
         const j = i * 7;
         let x = dots[j];
@@ -368,34 +469,45 @@ export default function HalftoneWordmarkFooter({
           dots[j + 3] = vy;
         }
         const k = hwfWarmth(x, y, hx, hy, 28);
+        if (k > 0.02) {
+          warmIdx[warmCount] = j;
+          warmK[warmCount] = k;
+          warmCount++;
+        } else {
+          const rad = dots[j + 6];
+          ctx.moveTo(x + rad, y);
+          ctx.arc(x, y, rad, 0, 6.2832);
+        }
+      }
+      ctx.fill();
+
+      // Draw only actively displaced warm dots individually.
+      for (let wIdx = 0; wIdx < warmCount; wIdx++) {
+        const j = warmIdx[wIdx];
+        const k = warmK[wIdx];
         ctx.fillStyle =
-          k > 0.02
-            ? "rgb(" +
-              Math.round(ink[0] + (warm[0] - ink[0]) * k) +
-              "," +
-              Math.round(ink[1] + (warm[1] - ink[1]) * k) +
-              "," +
-              Math.round(ink[2] + (warm[2] - ink[2]) * k) +
-              ")"
-            : o.colors.ink;
+          "rgb(" +
+          Math.round(ink[0] + (warm[0] - ink[0]) * k) +
+          "," +
+          Math.round(ink[1] + (warm[1] - ink[1]) * k) +
+          "," +
+          Math.round(ink[2] + (warm[2] - ink[2]) * k) +
+          ")";
         ctx.beginPath();
-        ctx.arc(x, y, dots[j + 6], 0, 6.2832);
+        ctx.arc(dots[j], dots[j + 1], dots[j + 6], 0, 6.2832);
         ctx.fill();
       }
 
-      if (grainTile && o.grain > 0) {
+      if (grainPattern && o.grain > 0) {
         ctx.globalAlpha = Math.min(1, o.grain) * 0.09;
         ctx.globalCompositeOperation = "overlay";
-        const pattern = ctx.createPattern(grainTile, "repeat");
-        if (pattern) {
-          ctx.fillStyle = pattern;
-          ctx.fillRect(0, 0, w, h);
-        }
+        ctx.fillStyle = grainPattern;
+        ctx.fillRect(0, 0, w, h);
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = "source-over";
       }
-      // Sleep once everything is home and nothing is pushing.
-      awake = moving || ringAge < 900 || px > -1e4;
+      // Sleep once everything is home, nothing is pushing, and color transition completed.
+      awake = moving || colorTransitioning || ringAge < 900 || px > -1e4;
     };
 
     const loop = (now) => {
@@ -408,6 +520,7 @@ export default function HalftoneWordmarkFooter({
       awake = true;
       if (!raf && visible) raf = requestAnimationFrame(loop);
     };
+    wakeRef.current = wake;
 
     const toLocal = (e) => {
       const b = canvas.getBoundingClientRect();
@@ -462,6 +575,7 @@ export default function HalftoneWordmarkFooter({
 
     return () => {
       alive = false;
+      wakeRef.current = () => {};
       cancelAnimationFrame(raf);
       ro.disconnect();
       io.disconnect();
@@ -469,7 +583,7 @@ export default function HalftoneWordmarkFooter({
       root.removeEventListener("pointerleave", onLeave);
       root.removeEventListener("pointerdown", onDown);
     };
-  }, [key]);
+  }, [layoutKey]);
 
   const toTop = () => {
     if (typeof window !== "undefined") {
@@ -518,4 +632,6 @@ export default function HalftoneWordmarkFooter({
       </div>
     </footer>
   );
-}
+});
+
+export default HalftoneWordmarkFooter;

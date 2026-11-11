@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import A24PhysicalDisc from './A24PhysicalDisc';
 import Drive3DCanvas from './Drive3DCanvas';
 import TrajectoryChart from './TrajectoryChart';
@@ -84,6 +84,276 @@ export default function A24FocalDeepDive({
   // Next item in the catalog for the "UP NEXT" transition
   const currentIndex = catalog.findIndex((c) => c.id === item.id);
   const nextItem = catalog[(currentIndex + 1) % catalog.length];
+
+  const footerRef = useRef(null);
+  const [footerPullCount, setFooterPullCount] = useState(0);
+  const [pullProgress, setPullProgress] = useState(0);
+  const isAdvancingRef = useRef(false);
+  const pullCountRef = useRef(0);
+  const resetTimerRef = useRef(null);
+  const didDragRef = useRef(false);
+
+  const updatePullCount = useCallback((val) => {
+    pullCountRef.current = val;
+    setFooterPullCount(val);
+  }, []);
+
+  const triggerNextCard = useCallback(() => {
+    if (isAdvancingRef.current || !nextItem) return;
+    isAdvancingRef.current = true;
+    clearTimeout(resetTimerRef.current);
+    updatePullCount(2);
+    setPullProgress(1);
+    playVinylClick();
+
+    setTimeout(() => {
+      onSelectNext(nextItem);
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }, 180);
+  }, [nextItem, onSelectNext, updatePullCount]);
+
+  const registerFooterDrag = useCallback(() => {
+    if (isAdvancingRef.current) return;
+    clearTimeout(resetTimerRef.current);
+
+    const nextCount = pullCountRef.current + 1;
+    if (nextCount >= 2) {
+      triggerNextCard();
+    } else {
+      playSeekTick();
+      updatePullCount(1);
+      resetTimerRef.current = setTimeout(() => {
+        updatePullCount(0);
+      }, 8000);
+    }
+  }, [triggerNextCard, updatePullCount]);
+
+  // Reset scroll to top on card change and attach bottom double-drag listeners
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    isAdvancingRef.current = false;
+    updatePullCount(0);
+    setPullProgress(0);
+    return () => clearTimeout(resetTimerRef.current);
+  }, [item.id, updatePullCount]);
+
+  useEffect(() => {
+    const isNearBottom = (tolerance = 60) => {
+      const scrollY = window.scrollY || window.pageYOffset;
+      const docHeight = document.documentElement.scrollHeight;
+      return scrollY + window.innerHeight >= docHeight - tolerance;
+    };
+
+    const getThresholdPx = () =>
+      Math.min(110, Math.max(70, window.innerHeight * 0.12));
+
+    // 1. Mouse long drag state
+    const pointerState = {
+      active: false,
+      startX: 0,
+      startY: 0,
+      inFooter: false,
+      startedNearBottom: false,
+      startTag: '',
+      consumed: false,
+    };
+
+    const onPointerDown = (e) => {
+      if (e.pointerType !== 'mouse' || e.button !== 0 || isAdvancingRef.current) return;
+      const tag = e.target?.tagName || '';
+      if (['INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'CANVAS'].includes(tag)) return;
+
+      pointerState.active = true;
+      pointerState.startX = e.clientX;
+      pointerState.startY = e.clientY;
+      pointerState.inFooter = Boolean(footerRef.current?.contains(e.target));
+      pointerState.startedNearBottom = isNearBottom(80);
+      pointerState.startTag = tag;
+      pointerState.consumed = false;
+      didDragRef.current = false;
+    };
+
+    const onPointerMove = (e) => {
+      if (e.pointerType !== 'mouse' || !pointerState.active) return;
+      const dx = e.clientX - pointerState.startX;
+      const dy = pointerState.startY - e.clientY;
+
+      if (Math.hypot(dx, dy) > 8) {
+        didDragRef.current = true;
+      }
+
+      if (pointerState.consumed || isAdvancingRef.current) return;
+
+      const eligible =
+        pointerState.inFooter ||
+        (pointerState.startedNearBottom &&
+          pointerState.startY >= window.innerHeight * 0.45 &&
+          !['CODE', 'PRE'].includes(pointerState.startTag));
+
+      if (eligible && dy > 16 && dy > Math.abs(dx) * 1.15) {
+        if (!pointerState.inFooter) {
+          window.getSelection?.()?.removeAllRanges?.();
+        }
+        const threshold = getThresholdPx();
+        setPullProgress(Math.min(1, dy / threshold));
+        if (dy >= threshold) {
+          pointerState.consumed = true;
+          setPullProgress(0);
+          registerFooterDrag();
+        }
+      } else if (dy <= 0) {
+        setPullProgress(0);
+      }
+    };
+
+    const onPointerEnd = (e) => {
+      if (e.pointerType !== 'mouse' || !pointerState.active) return;
+      pointerState.active = false;
+      setPullProgress(0);
+      setTimeout(() => {
+        didDragRef.current = false;
+      }, 0);
+    };
+
+    // 2. Touch long drag state (mobile / touchscreen)
+    const touchState = {
+      active: false,
+      startX: 0,
+      startY: 0,
+      inFooter: false,
+      startedNearBottom: false,
+      consumed: false,
+    };
+
+    const onTouchStart = (e) => {
+      if (e.touches.length !== 1 || isAdvancingRef.current) return;
+      const touch = e.touches[0];
+      const tag = e.target?.tagName || '';
+      if (['INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'CANVAS'].includes(tag)) return;
+
+      touchState.active = true;
+      touchState.startX = touch.clientX;
+      touchState.startY = touch.clientY;
+      touchState.inFooter = Boolean(footerRef.current?.contains(e.target));
+      touchState.startedNearBottom = isNearBottom(60);
+      touchState.consumed = false;
+    };
+
+    const onTouchMove = (e) => {
+      if (!touchState.active || touchState.consumed || e.touches.length !== 1 || isAdvancingRef.current) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - touchState.startX;
+      const dy = touchState.startY - touch.clientY;
+
+      const eligible =
+        (touchState.inFooter && isNearBottom(180)) ||
+        (touchState.startedNearBottom && touchState.startY >= window.innerHeight * 0.45);
+
+      if (eligible && dy > 16 && dy > Math.abs(dx) * 1.15) {
+        const threshold = getThresholdPx();
+        setPullProgress(Math.min(1, dy / threshold));
+        if (dy >= threshold) {
+          touchState.consumed = true;
+          setPullProgress(0);
+          registerFooterDrag();
+        }
+      } else if (dy <= 0) {
+        setPullProgress(0);
+      }
+    };
+
+    const onTouchEnd = () => {
+      touchState.active = false;
+      setPullProgress(0);
+    };
+
+    // 3. Wheel / trackpad overscroll downward at footer
+    const WHEEL_THRESHOLD = 160;
+    const wheelState = {
+      lastTime: 0,
+      lastDeltaY: 0,
+      startedAtBottom: false,
+      accum: 0,
+      consumed: false,
+      decayTimer: null,
+    };
+
+    const onWheel = (e) => {
+      if (isAdvancingRef.current || e.deltaY <= 0) return;
+
+      const now = performance.now();
+      const gap = now - wheelState.lastTime;
+      const isFreshGesture =
+        gap > 240 ||
+        (wheelState.consumed &&
+          e.deltaY >= 35 &&
+          e.deltaY > wheelState.lastDeltaY * 2.2 &&
+          wheelState.lastDeltaY <= 12);
+
+      if (isFreshGesture) {
+        wheelState.accum = 0;
+        wheelState.consumed = false;
+        wheelState.startedAtBottom = isNearBottom(24);
+      }
+
+      wheelState.lastTime = now;
+      wheelState.lastDeltaY = e.deltaY;
+
+      if (!wheelState.startedAtBottom || wheelState.consumed) return;
+
+      wheelState.accum += e.deltaY;
+      setPullProgress(Math.min(1, wheelState.accum / WHEEL_THRESHOLD));
+
+      clearTimeout(wheelState.decayTimer);
+      wheelState.decayTimer = setTimeout(() => {
+        if (!wheelState.consumed) {
+          wheelState.accum = 0;
+          setPullProgress(0);
+        }
+      }, 320);
+
+      if (wheelState.accum >= WHEEL_THRESHOLD) {
+        wheelState.consumed = true;
+        wheelState.accum = 0;
+        setPullProgress(0);
+        registerFooterDrag();
+      }
+    };
+
+    // 4. Reset armed count if user scrolls far away from the footer
+    const onScroll = () => {
+      if (pullCountRef.current > 0 && !isNearBottom(320)) {
+        clearTimeout(resetTimerRef.current);
+        updatePullCount(0);
+        setPullProgress(0);
+      }
+    };
+
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerEnd);
+    window.addEventListener('pointercancel', onPointerEnd);
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd);
+    window.addEventListener('touchcancel', onTouchEnd);
+    window.addEventListener('wheel', onWheel, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerEnd);
+      window.removeEventListener('pointercancel', onPointerEnd);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('scroll', onScroll);
+      clearTimeout(wheelState.decayTimer);
+    };
+  }, [registerFooterDrag, updatePullCount]);
 
   // Step controls
   const handleStepForward = () => {
@@ -644,12 +914,12 @@ export default function A24FocalDeepDive({
       </section>
 
       {/* SECTION 3: "UP NEXT" ENDLESS CRATE NAVIGATION (a24.raviklaassens.com / [data-scroll-next]) */}
-      <section className="px-6 md:px-16 lg:px-24 pt-20">
+      <section ref={footerRef} onDragStart={(e) => e.preventDefault()} className="px-6 md:px-16 lg:px-24 pt-20 select-none cursor-grab active:cursor-grabbing">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col items-center text-center">
+          <div className="flex flex-col items-center text-center transition-transform duration-200 ease-out" style={{ transform: pullProgress > 0 ? `translateY(-${Math.round(pullProgress * 18)}px)` : 'translateY(0px)' }}>
             {/* Animated Hint Arrow */}
             <div
-              className={`mb-3 animate-scroll-hint ${
+              className={`mb-3 animate-scroll-hint ${footerPullCount >= 1 ? '!text-[#891a20] ' : ''}${
                 isDark ? 'text-[#8c8b94]' : 'text-[#6b6a72]'
               }`}
             >
@@ -666,9 +936,10 @@ export default function A24FocalDeepDive({
 
             <button
               onClick={() => {
+                if (didDragRef.current) return;
                 playVinylClick();
                 onSelectNext(nextItem);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                window.scrollTo({ top: 0, behavior: 'auto' });
               }}
               className="group flex flex-col items-center focus:outline-none"
             >
@@ -708,6 +979,57 @@ export default function A24FocalDeepDive({
                 <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
               </span>
             </button>
+
+            {/* Two-Stage Footer Long-Drag Progress Gauge (0/2 -> 1/2 -> Switch) */}
+            <div className="mt-7 flex flex-col items-center space-y-2.5">
+              <div className="flex items-center space-x-2">
+                {[0, 1].map((stage) => {
+                  const isCompleted = footerPullCount > stage;
+                  const isActiveStage = footerPullCount === stage;
+                  const fillPct = isCompleted
+                    ? 100
+                    : isActiveStage
+                    ? Math.round(pullProgress * 100)
+                    : 0;
+                  return (
+                    <div
+                      key={stage}
+                      className={`w-20 h-1 overflow-hidden transition-colors ${
+                        isDark ? 'bg-[#24242e]' : 'bg-[#0d0d11]/15'
+                      }`}
+                    >
+                      <div
+                        className={`h-full transition-all duration-100 ${
+                          footerPullCount >= 1
+                            ? 'bg-[#891a20]'
+                            : isDark
+                            ? 'bg-[#f3f1ea]'
+                            : 'bg-[#0d0d11]'
+                        }`}
+                        style={{ width: `${fillPct}%` }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <span
+                className={`text-[10px] font-mono-tech uppercase tracking-[0.22em] transition-colors ${
+                  footerPullCount >= 1
+                    ? 'text-[#891a20] font-bold'
+                    : isDark
+                    ? 'text-[#8c8b94]'
+                    : 'text-[#6b6a72]'
+                }`}
+              >
+                {footerPullCount >= 2
+                  ? `SWITCHING TO ${nextItem.title}...`
+                  : footerPullCount === 1
+                  ? `DRAG 1 / 2 · LONG DRAG AGAIN AT FOOTER FOR ${nextItem.title}`
+                  : pullProgress > 0.05
+                  ? `PULLING 1 / 2 · KEEP DRAGGING (${Math.round(pullProgress * 100)}%)`
+                  : 'LONG DRAG TWICE AT FOOTER TO SWITCH CARD'}
+              </span>
+            </div>
           </div>
         </div>
       </section>

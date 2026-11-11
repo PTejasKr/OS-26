@@ -13,7 +13,7 @@ import { playVinylClick } from '../utils/soundEffects';
  * - True physical 3D arch with apex elevation, tangential slope rotation, and 3D yaw.
  * - Full mouse drag, wheel scroll, keyboard arrows, and navigation buttons.
  */
-export default function A24CrateGallery({
+const A24CrateGallery = React.memo(function A24CrateGallery({
   catalog,
   activeIndex,
   onSelectIndex,
@@ -206,15 +206,17 @@ export default function A24CrateGallery({
   return (
     <section
       id="section_hero"
-      className={`relative min-h-[85vh] flex flex-col justify-center items-center gap-4 sm:gap-6 pt-20 pb-10 sm:pt-24 sm:pb-14 w-full overflow-x-clip transition-colors duration-500 select-none ${
-        isDark ? 'bg-[#07070a] text-[#f3f1ea]' : 'bg-[#f2f2f2] text-[#0d0d11]'
+      className={`relative min-h-[85vh] flex flex-col justify-center items-center gap-4 sm:gap-6 pt-20 pb-10 sm:pt-24 sm:pb-14 w-full overflow-x-clip bg-transparent transition-colors duration-500 select-none ${
+        isDark ? 'text-[#f3f1ea]' : 'text-[#0d0d11]'
       }`}
     >
       {/* Subtle Ambient Radial Glow */}
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[750px] h-[520px] rounded-full pointer-events-none opacity-20 blur-[140px] transition-all duration-700"
+        className="absolute top-1/2 left-1/2 w-[750px] h-[520px] rounded-full pointer-events-none opacity-20 blur-[140px] transition-opacity duration-700"
         style={{
           background: `radial-gradient(circle, ${activeItem.accentColor || '#891a20'}, transparent 70%)`,
+          transform: 'translate3d(-50%, -50%, 0)',
+          willChange: 'transform, opacity',
         }}
       />
 
@@ -316,7 +318,7 @@ export default function A24CrateGallery({
                 playVinylClick();
                 onSelectCategory(cat);
               }}
-              className={`px-3 py-1.5 text-[10px] font-mono-tech uppercase tracking-[0.2em] transition-all border ${
+              className={`px-3 py-1.5 text-[10px] font-mono-tech uppercase tracking-[0.2em] transition-[color,background-color,border-color] border ${
                 selectedCategory === cat
                   ? isDark
                     ? 'bg-[#f3f1ea] text-[#07070a] border-[#f3f1ea] font-bold'
@@ -351,7 +353,7 @@ export default function A24CrateGallery({
             e.stopPropagation();
             handlePrev();
           }}
-          className={`absolute left-4 sm:left-8 md:left-12 top-1/2 -translate-y-1/2 z-50 w-12 h-12 flex items-center justify-center rounded-full border transition-all backdrop-blur-md shadow-xl ${
+          className={`absolute left-4 sm:left-8 md:left-12 top-1/2 -translate-y-1/2 z-50 w-12 h-12 flex items-center justify-center rounded-full border transition-[color,background-color,border-color,transform] transform-gpu backdrop-blur-md shadow-xl ${
             isDark
               ? 'bg-[#07070a]/85 border-[#24242e] text-[#f3f1ea] hover:bg-[#14141c] hover:scale-110 active:scale-95'
               : 'bg-[#f2f2f2]/85 border-[#0d0d11]/20 text-[#0d0d11] hover:bg-white hover:scale-110 active:scale-95'
@@ -366,7 +368,7 @@ export default function A24CrateGallery({
             e.stopPropagation();
             handleNext();
           }}
-          className={`absolute right-4 sm:right-8 md:right-12 top-1/2 -translate-y-1/2 z-50 w-12 h-12 flex items-center justify-center rounded-full border transition-all backdrop-blur-md shadow-xl ${
+          className={`absolute right-4 sm:right-8 md:right-12 top-1/2 -translate-y-1/2 z-50 w-12 h-12 flex items-center justify-center rounded-full border transition-[color,background-color,border-color,transform] transform-gpu backdrop-blur-md shadow-xl ${
             isDark
               ? 'bg-[#07070a]/85 border-[#24242e] text-[#f3f1ea] hover:bg-[#14141c] hover:scale-110 active:scale-95'
               : 'bg-[#f2f2f2]/85 border-[#0d0d11]/20 text-[#0d0d11] hover:bg-white hover:scale-110 active:scale-95'
@@ -445,4 +447,6 @@ export default function A24CrateGallery({
       </div>
     </section>
   );
-}
+});
+
+export default A24CrateGallery;
