@@ -1,8 +1,34 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { Camera, Disc } from 'lucide-react';
+import { Disc } from 'lucide-react';
 import { playSeekTick, playReadPulse } from '../utils/soundEffects';
+
+// Global texture cache to prevent re-generating large 2D canvases on every mount
+let cachedPlatterTexture = null;
+let cachedPreampChipTexture = null;
+let cachedMagnetLabelTexture = null;
+
+function getPlatterTexture() {
+  if (!cachedPlatterTexture) {
+    cachedPlatterTexture = createPlatterTexture();
+  }
+  return cachedPlatterTexture;
+}
+
+function getPreampChipTexture() {
+  if (!cachedPreampChipTexture) {
+    cachedPreampChipTexture = createPreampChipTexture();
+  }
+  return cachedPreampChipTexture;
+}
+
+function getMagnetLabelTexture() {
+  if (!cachedMagnetLabelTexture) {
+    cachedMagnetLabelTexture = createMagnetLabelTexture();
+  }
+  return cachedMagnetLabelTexture;
+}
 
 /**
  * Procedural Platter Texture Generator
@@ -120,15 +146,19 @@ export default function Drive3DCanvas({
   maxTrack = 199,
   pendingRequests = [],
   servicedRequests = [],
-  direction = 'right',
-  isSeeking = false,
-  stepDescription = '',
+  direction: _direction = 'right',
+  isSeeking: _isSeeking = false,
+  stepDescription: _stepDescription = '',
   onTrackClick,
 }) {
   const mountRef = useRef(null);
-  const [cameraView, setCameraView] = useState('isometric'); // 'isometric', 'top', 'closeup', 'side'
-  const [rpm, setRpm] = useState(7200);
+  const [rpm] = useState(7200);
   const [isRotating, setIsRotating] = useState(true);
+  const isRotatingRef = useRef(true);
+
+  useEffect(() => {
+    isRotatingRef.current = isRotating;
+  }, [isRotating]);
 
   // References for animation loop
   const sceneRef = useRef(null);
@@ -196,16 +226,21 @@ export default function Drive3DCanvas({
     scene.background = new THREE.Color(0x07090e);
     scene.fog = new THREE.FogExp2(0x07090e, 0.035);
 
-    // 2. Camera
+    // 2. Camera (Optimal 3D Isometric View)
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
     cameraRef.current = camera;
     camera.position.set(4.8, 7.8, 6.2);
 
-    // 3. WebGL Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    // 3. High-Performance WebGL Renderer
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance',
+      precision: 'mediump',
+    });
     rendererRef.current = renderer;
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -230,12 +265,12 @@ export default function Drive3DCanvas({
     const ambientLight = new THREE.AmbientLight(0x3a424f, 2.2);
     scene.add(ambientLight);
 
-    // Key studio spotlight from top-left
+    // Key studio spotlight from top-left (optimized 1024 shadow map for smooth 60fps)
     const keyLight = new THREE.DirectionalLight(0xffffff, 3.8);
     keyLight.position.set(-5, 11, -4);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 2048;
-    keyLight.shadow.mapSize.height = 2048;
+    keyLight.shadow.mapSize.width = 1024;
+    keyLight.shadow.mapSize.height = 1024;
     keyLight.shadow.bias = -0.0001;
     scene.add(keyLight);
 
@@ -419,7 +454,7 @@ export default function Drive3DCanvas({
     }
 
     // --- E. Top-Left Brushed Steel Voice Coil Magnet Block ("S H10") ---
-    const magnetLabelTex = createMagnetLabelTexture();
+    const magnetLabelTex = getMagnetLabelTexture();
     const magnetSteelMat = new THREE.MeshStandardMaterial({
       color: 0xc4ccd4,
       roughness: 0.22,
@@ -481,7 +516,7 @@ export default function Drive3DCanvas({
     driveGroup.add(flexPcb);
 
     // Preamp Integrated Circuit Chip
-    const chipTex = createPreampChipTexture();
+    const chipTex = getPreampChipTexture();
     const chipMat = new THREE.MeshStandardMaterial({
       map: chipTex,
       roughness: 0.65,
@@ -506,7 +541,7 @@ export default function Drive3DCanvas({
     }
 
     // --- G. The Obsidian Mirror Magnetic Platter ---
-    const platterTex = createPlatterTexture();
+    const platterTex = getPlatterTexture();
     const platterMat = new THREE.MeshStandardMaterial({
       map: platterTex,
       color: 0x181a20,
@@ -727,7 +762,7 @@ export default function Drive3DCanvas({
       animId = requestAnimationFrame(animate);
 
       // Continuous Platter Rotation at set RPM
-      if (isRotating && platterMeshRef.current) {
+      if (isRotatingRef.current && platterMeshRef.current) {
         const spinSpeed = (rpm / 60) * 0.032;
         platterMeshRef.current.rotation.y += spinSpeed;
       }
@@ -741,14 +776,14 @@ export default function Drive3DCanvas({
           armGroupRef.current.rotation.y = armAngleRef.current;
         }
 
-        // Stepper tick sound
+        // Stepper tick sound (throttled to avoid Web Audio context thread flooding)
         const curInt = Math.round(
           minTrack +
             ((armAngleRef.current - trackToAngle(minTrack)) /
               (trackToAngle(maxTrack) - trackToAngle(minTrack))) *
               (maxTrack - minTrack)
         );
-        if (curInt !== lastTrackSoundRef.current) {
+        if (Math.abs(curInt - lastTrackSoundRef.current) >= 8) {
           playSeekTick(1 + (Math.abs(curInt) / maxTrack) * 0.4);
           lastTrackSoundRef.current = curInt;
         }
@@ -780,20 +815,33 @@ export default function Drive3DCanvas({
 
     animate();
 
-    // Resize Handler
+    // Responsive Container Resize Handler using ResizeObserver for precise layout tracking
     const handleResize = () => {
       if (!container || !renderer || !camera) return;
       const w = container.clientWidth;
       const h = container.clientHeight || 460;
+      if (w === 0 || h === 0) return;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     };
-    window.addEventListener('resize', handleResize);
+
+    let resizeObserver = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(handleResize);
+      resizeObserver.observe(container);
+    } else {
+      window.addEventListener('resize', handleResize);
+    }
 
     return () => {
       cancelAnimationFrame(animId);
-      window.removeEventListener('resize', handleResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      } else {
+        window.removeEventListener('resize', handleResize);
+      }
+      controls.dispose();
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
@@ -805,12 +853,18 @@ export default function Drive3DCanvas({
   useEffect(() => {
     if (!pendingRingsGroupRef.current || !servicedRingsGroupRef.current) return;
 
-    // Clear previous rings
+    // Clear previous rings and dispose geometry/material to avoid GPU memory leaks
     while (pendingRingsGroupRef.current.children.length > 0) {
-      pendingRingsGroupRef.current.remove(pendingRingsGroupRef.current.children[0]);
+      const child = pendingRingsGroupRef.current.children[0];
+      child.geometry?.dispose();
+      child.material?.dispose();
+      pendingRingsGroupRef.current.remove(child);
     }
     while (servicedRingsGroupRef.current.children.length > 0) {
-      servicedRingsGroupRef.current.remove(servicedRingsGroupRef.current.children[0]);
+      const child = servicedRingsGroupRef.current.children[0];
+      child.geometry?.dispose();
+      child.material?.dispose();
+      servicedRingsGroupRef.current.remove(child);
     }
 
     // Pending Requests (Amber Rings)
@@ -847,31 +901,6 @@ export default function Drive3DCanvas({
       servicedRingsGroupRef.current.add(ring);
     });
   }, [pendingRequests, servicedRequests, minTrack, maxTrack]);
-
-  // Camera Presets
-  const setCameraPreset = (preset) => {
-    setCameraView(preset);
-    if (!cameraRef.current || !controlsRef.current) return;
-    const cam = cameraRef.current;
-    const ctrl = controlsRef.current;
-
-    if (preset === 'isometric') {
-      cam.position.set(4.8, 7.8, 6.2);
-      ctrl.target.set(0, 0.2, 0.5);
-    } else if (preset === 'top') {
-      // Direct top-down view mirroring the user's reference photograph!
-      cam.position.set(0, 11.8, 0.1);
-      ctrl.target.set(0, 0.2, 0.1);
-    } else if (preset === 'closeup') {
-      // Macro view on the actuator head slider and magnetic tracks
-      cam.position.set(0.3, 2.2, 2.2);
-      ctrl.target.set(0, 0.2, 1.2);
-    } else if (preset === 'side') {
-      cam.position.set(-7.5, 2.8, 1.2);
-      ctrl.target.set(0, 0.2, 1.2);
-    }
-    ctrl.update();
-  };
 
   // Raycasting for 3D Click-to-Seek on Platter Surface
   const handleCanvasClick = (e) => {
@@ -928,31 +957,6 @@ export default function Drive3DCanvas({
             {isRotating ? `${rpm} RPM` : 'MOTOR HALTED'}
           </span>
         </button>
-
-        <span className="text-[#3a3a46]">|</span>
-
-        {/* Camera Views */}
-        <div className="flex items-center gap-1">
-          <Camera className="w-3.5 h-3.5 text-[#8c8b94] mr-1" />
-          {[
-            { id: 'isometric', label: '3D ISO' },
-            { id: 'top', label: 'PHOTO TOP' },
-            { id: 'closeup', label: 'HEAD' },
-            { id: 'side', label: 'SIDE' },
-          ].map((v) => (
-            <button
-              key={v.id}
-              onClick={() => setCameraPreset(v.id)}
-              className={`px-2 py-0.5 text-[10px] font-mono-tech uppercase tracking-wider transition-all border ${
-                cameraView === v.id
-                  ? 'bg-[#f3f1ea] text-[#07070a] border-[#f3f1ea] font-bold shadow'
-                  : 'bg-[#12151c] text-[#8c8b94] border-[#24242e] hover:border-[#8c8b94] hover:text-[#f3f1ea]'
-              }`}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );
