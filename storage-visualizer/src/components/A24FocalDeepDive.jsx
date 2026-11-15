@@ -5,6 +5,7 @@ import TrajectoryChart from './TrajectoryChart';
 import StepCalculationProof from './StepCalculationProof';
 import AsciiDiagrams from './AsciiDiagrams';
 import DataFlowStateMachine from './DataFlowStateMachine';
+import LruDiskSwapLab from './LruDiskSwapLab';
 import {
   X,
   ArrowLeft,
@@ -49,6 +50,7 @@ const A24FocalDeepDive = React.memo(function A24FocalDeepDive({
   onToggleTheme,
 }) {
   const [activeTab, setActiveTab] = useState('simulation'); // 'simulation', 'hardware3d', 'ascii', 'pipeline'
+  const [hardware3dMode, setHardware3dMode] = useState('lru'); // 'lru' | 'disk'
   const [isSpinning, setIsSpinning] = useState(true);
   const [muted, setMuted] = useState(isMuted());
   const isDark = theme === 'dark';
@@ -838,7 +840,7 @@ const A24FocalDeepDive = React.memo(function A24FocalDeepDive({
             >
               {[
                 { id: 'simulation', num: '01', label: 'SEEK ENGINE' },
-                { id: 'hardware3d', num: '02', label: '3D HARD DRIVE' },
+                { id: 'hardware3d', num: '02', label: '3D DRIVE & ASCII LAB' },
                 { id: 'ascii', num: '03', label: 'ASCII BLUEPRINT' },
                 { id: 'pipeline', num: '04', label: 'I/O STATE MACHINE' },
               ].map((tab) => {
@@ -982,64 +984,120 @@ const A24FocalDeepDive = React.memo(function A24FocalDeepDive({
             </div>
           )}
 
-          {/* TAB CONTENT 2: 3D HARD DRIVE HARDWARE */}
+          {/* TAB CONTENT 2: 3D HARD DRIVE & LRU ASCII LAB */}
           {activeTab === 'hardware3d' && (
-            <div
-              className={`border p-6 ${
-                isDark
-                  ? 'bg-[#0c0c12] border-[#24242e]'
-                  : 'bg-[#e8e7e1] border-[#0d0d11]/15'
-              }`}
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <span
-                  className={`text-xs font-mono-tech uppercase tracking-[0.2em] ${
-                    isDark ? 'text-[#8c8b94]' : 'text-[#6b6a72]'
-                  }`}
-                >
-                  ACTIVE TRACK: {currentTrack} // PENDING REQUESTS: {parsedQueue.length}
-                </span>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={handleStepForward}
-                    className={`px-3 py-1.5 border text-xs font-mono-tech uppercase tracking-[0.16em] transition-[color,background-color,border-color] ${
-                      isDark
-                        ? 'border-[#24242e] hover:bg-[#f3f1ea] hover:text-[#07070a]'
-                        : 'border-[#0d0d11]/20 hover:bg-[#0d0d11] hover:text-[#f2f2f2]'
-                    }`}
-                  >
-                    STEP ARM →
-                  </button>
-                  <button
-                    onClick={handleStepReset}
-                    className={`p-1.5 border transition-[color,background-color,border-color] ${
-                      isDark
-                        ? 'border-[#24242e] text-[#8c8b94] hover:text-[#f3f1ea]'
-                        : 'border-[#0d0d11]/20 text-[#6b6a72] hover:text-[#0d0d11]'
-                    }`}
-                    title="Reset"
-                  >
-                    <RotateCcw size={14} />
-                  </button>
-                </div>
-              </div>
+            <div className="space-y-4">
+              {/* Lab Sub-Mode Selector */}
               <div
-                className={`h-[550px] w-full rounded border overflow-hidden ${
-                  isDark ? 'border-[#24242e]/60' : 'border-[#0d0d11]/15'
+                className={`flex items-center justify-between p-3 border flex-wrap gap-2 ${
+                  isDark ? 'bg-[#0c0c12] border-[#24242e]' : 'bg-[#e8e7e1] border-[#0d0d11]/15'
                 }`}
               >
-                <Drive3DCanvas
-                  currentTrack={currentTrack}
-                  minTrack={0}
-                  maxTrack={199}
-                  pendingRequests={parsedQueue}
-                  servicedRequests={simulationResult.trajectory.slice(0, currentStepIndex)}
-                  direction={direction}
-                  isSeeking={isPlaying}
-                  stepDescription={`Servicing Track ${currentTrack}`}
-                  onTrackClick={(trk) => setHeadPos(trk)}
-                />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-mono-tech uppercase tracking-widest text-[#8c8b94]">
+                    LABORATORY MODE:
+                  </span>
+                  <button
+                    onClick={() => {
+                      playVinylClick();
+                      setHardware3dMode('lru');
+                    }}
+                    className={`px-3 py-1.5 text-xs font-mono-tech uppercase tracking-wider border transition-colors flex items-center gap-1.5 ${
+                      hardware3dMode === 'lru'
+                        ? 'bg-[#891a20] text-white border-[#891a20] font-bold'
+                        : isDark
+                        ? 'bg-[#15151f] text-[#8c8b94] border-[#24242e] hover:text-[#f3f1ea]'
+                        : 'bg-white text-[#6b6a72] border-[#0d0d11]/20 hover:text-[#0d0d11]'
+                    }`}
+                  >
+                    <span>⚡ LRU MEMORY & DISK SWAP LAB (MERGED 3D + ASCII)</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      playVinylClick();
+                      setHardware3dMode('disk');
+                    }}
+                    className={`px-3 py-1.5 text-xs font-mono-tech uppercase tracking-wider border transition-colors flex items-center gap-1.5 ${
+                      hardware3dMode === 'disk'
+                        ? isDark
+                          ? 'bg-[#f3f1ea] text-[#07070a] border-[#f3f1ea] font-bold'
+                          : 'bg-[#0d0d11] text-[#f2f2f2] border-[#0d0d11] font-bold'
+                        : isDark
+                        ? 'bg-[#15151f] text-[#8c8b94] border-[#24242e] hover:text-[#f3f1ea]'
+                        : 'bg-white text-[#6b6a72] border-[#0d0d11]/20 hover:text-[#0d0d11]'
+                    }`}
+                  >
+                    <span>3D DISK SCHEDULER CYLINDER SEEK</span>
+                  </button>
+                </div>
+                <div className="text-[11px] font-mono-tech text-[#8c8b94]">
+                  {hardware3dMode === 'lru'
+                    ? 'REAL-TIME DUAL LEARNING: DRAM FRAMES + PHYSICAL HARD DISK SWAP'
+                    : `ALGORITHM: ${item.code || item.title}`}
+                </div>
               </div>
+
+              {hardware3dMode === 'lru' ? (
+                <LruDiskSwapLab theme={theme} />
+              ) : (
+                <div
+                  className={`border p-6 ${
+                    isDark
+                      ? 'bg-[#0c0c12] border-[#24242e]'
+                      : 'bg-[#e8e7e1] border-[#0d0d11]/15'
+                  }`}
+                >
+                  <div className="mb-4 flex items-center justify-between">
+                    <span
+                      className={`text-xs font-mono-tech uppercase tracking-[0.2em] ${
+                        isDark ? 'text-[#8c8b94]' : 'text-[#6b6a72]'
+                      }`}
+                    >
+                      ACTIVE TRACK: {currentTrack} // PENDING REQUESTS: {parsedQueue.length}
+                    </span>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={handleStepForward}
+                        className={`px-3 py-1.5 border text-xs font-mono-tech uppercase tracking-[0.16em] transition-[color,background-color,border-color] ${
+                          isDark
+                            ? 'border-[#24242e] hover:bg-[#f3f1ea] hover:text-[#07070a]'
+                            : 'border-[#0d0d11]/20 hover:bg-[#0d0d11] hover:text-[#f2f2f2]'
+                        }`}
+                      >
+                        STEP ARM →
+                      </button>
+                      <button
+                        onClick={handleStepReset}
+                        className={`p-1.5 border transition-[color,background-color,border-color] ${
+                          isDark
+                            ? 'border-[#24242e] text-[#8c8b94] hover:text-[#f3f1ea]'
+                            : 'border-[#0d0d11]/20 text-[#6b6a72] hover:text-[#0d0d11]'
+                        }`}
+                        title="Reset"
+                      >
+                        <RotateCcw size={14} />
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    className={`h-[550px] w-full rounded border overflow-hidden ${
+                      isDark ? 'border-[#24242e]/60' : 'border-[#0d0d11]/15'
+                    }`}
+                  >
+                    <Drive3DCanvas
+                      currentTrack={currentTrack}
+                      minTrack={0}
+                      maxTrack={199}
+                      pendingRequests={parsedQueue}
+                      servicedRequests={simulationResult.trajectory.slice(0, currentStepIndex)}
+                      direction={direction}
+                      isSeeking={isPlaying}
+                      stepDescription={`Servicing Track ${currentTrack}`}
+                      onTrackClick={(trk) => setHeadPos(trk)}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1066,6 +1124,10 @@ const A24FocalDeepDive = React.memo(function A24FocalDeepDive({
                 maxTrack={199}
                 servicedRequests={simulationResult.trajectory.slice(0, currentStepIndex)}
                 pendingRequests={parsedQueue}
+                onLaunchLab={() => {
+                  setActiveTab('hardware3d');
+                  setHardware3dMode('lru');
+                }}
               />
             </div>
           )}

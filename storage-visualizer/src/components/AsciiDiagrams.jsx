@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, Terminal, FileText, Activity, Layers, Disc } from 'lucide-react';
+import { Copy, Check, Terminal, FileText, Activity, Layers, Disc, Database, Cpu } from 'lucide-react';
 import BentoCard from './BentoCard';
 import { playKeyClick } from '../utils/soundEffects';
 
@@ -11,10 +11,11 @@ export default function AsciiDiagrams({
   servicedRequests = [],
   pendingRequests = [],
   theme = 'base',
+  onLaunchLab,
 }) {
   const isDark = theme === 'dark';
   const [copiedId, setCopiedId] = useState(null);
-  const [activeTab, setActiveTab] = useState('pipeline'); // 'pipeline', 'trajectory', 'platter', 'files'
+  const [activeTab, setActiveTab] = useState('pipeline'); // 'pipeline', 'trajectory', 'platter', 'files', 'lru'
 
   const copyToClipboard = (text, id) => {
     playKeyClick();
@@ -215,11 +216,86 @@ export default function AsciiDiagrams({
    +-----------------------------------------------------------+
    * Advantage: Fast direct access AND dynamic sizing with 0% external fragmentation!`;
 
+  // 5. Generate ASCII LRU Page Replacement & Swap Memory Schematic
+  const asciiLruSwap = `================================================================================
+          LRU PAGE REPLACEMENT & SECONDARY DISK SWAP ARCHITECTURE
+================================================================================
+
++-----------------------------------------------------------------------------+
+|                                 CPU CORE                                    |
+|   Memory Management Unit (MMU) generates Virtual Address -> Logical Page #  |
++--------------------------------------|--------------------------------------+
+                                       |
+                                       v
++-----------------------------------------------------------------------------+
+|                    PAGE TABLE LOOKUP (TLB / CR3 REGISTER)                   |
+|   Valid-Invalid Bit Checked: Is Page resident in Primary Memory (RAM)?      |
++--------------------------------------|--------------------------------------+
+                   |                                       |
+    [VALID BIT = 1: PAGE HIT]               [VALID BIT = 0: PAGE FAULT EXCEPTION]
+                   |                                       |
+                   v                                       v
++-------------------------------------+ +-------------------------------------+
+| MMU Translates to Physical Frame    | | TRAP TO OS KERNEL (Page Fault Trap) |
+| Ultra-Fast Silicon Access: 0.001 ms | | Process State ===> BLOCKED (Wait I/O|
+| Zero mechanical arm movement!       | +------------------|------------------+
++-------------------------------------+                    |
+                                                           v
+                                        +-------------------------------------+
+                                        | CHECK FREE PRIMARY MEMORY FRAMES    |
+                                        +------------------|------------------+
+                                           /                               \\
+                       [FREE FRAME AVAILABLE]             [FRAMES OCCUPIED: MEMORY FULL]
+                                 |                                         |
+                                 v                                         v
+               +-----------------------------------+     +-----------------------------------+
+               | 01. ALLOCATE EMPTY FRAME          |     | 01. SELECT LRU VICTIM PAGE        |
+               |     Direct Page-In to RAM frame   |     |     Find page untouched longest   |
+               +-----------------|-----------------+     +-----------------|-----------------+
+                                 |                                         |
+                                 |                                         v
+                                 |                       +-----------------------------------+
+                                 |                       | 02. PAGE-OUT TO SECONDARY STORAGE |
+                                 |                       |     Arm seeks to Swap Cylinder:   |
+                                 |                       |     CYL = (Victim * 19) % 200     |
+                                 |                       |     Write victim frame to disk    |
+                                 |                       +-----------------|-----------------+
+                                 |                                         |
+                                 +--------------------+--------------------+
+                                                      |
+                                                      v
+                                        +-------------------------------------+
+                                        | 03. PAGE-IN DESIRED PAGE FROM DISK  |
+                                        |     Disk Arm seeks to target block  |
+                                        |     DMA reads payload into RAM      |
+                                        |     Update Valid bit = 1 in PT      |
+                                        |     Process State ===> READY        |
+                                        +-------------------------------------+
+
+--------------------------------------------------------------------------------
+TEMPORAL LOCALITY STACK (DOUBLY LINKED LIST REPRESENTATION):
+--------------------------------------------------------------------------------
+
+ [MRU: MOST RECENTLY ACCESSED]  <== Latest references pushed to head
+          |
+          v
+      [ Page X ] <---> [ Page Y ] <---> [ Page Z ]
+                                              |
+                                              v
+                              [LRU: VICTIM CANDIDATE FOR SWAP EVICTION]
+
+* REPLACEMENT POLICY (Silberschatz OS Principle):
+  "When page fault occurs and no frame is free, evict the page that has not been
+   used for the longest period of time (approximating Belady's Optimal algorithm
+   by using the past as an oracle for the future)."
+================================================================================`;
+
   const tabs = [
     { id: 'pipeline', label: '01 // Data Flow Pipeline', icon: Activity },
     { id: 'trajectory', label: '02 // Head Trajectory', icon: Disc },
     { id: 'platter', label: '03 // Platter Radar', icon: Layers },
     { id: 'files', label: '04 // Allocation Models', icon: FileText },
+    { id: 'lru', label: '05 // LRU Memory & Swap', icon: Database },
   ];
 
   return (
@@ -264,37 +340,54 @@ export default function AsciiDiagrams({
             })}
           </div>
 
-          {/* Copy Button */}
-          <button
-            onClick={() => {
-              const textMap = {
-                pipeline: asciiPipeline,
-                trajectory: generateAsciiTrajectory(),
-                platter: generateAsciiPlatter(),
-                files: asciiFiles,
-              };
-              copyToClipboard(textMap[activeTab], activeTab);
-            }}
-            className={`px-3 py-1.5 border font-mono-tech text-xs tracking-wider uppercase flex items-center gap-2 transition-colors ${
-              copiedId === activeTab
-                ? 'bg-[#891a20] text-white border-[#891a20]'
-                : isDark
-                ? 'bg-[#15151f] text-[#d6d5dc] border-[#24242e] hover:border-[#f2f2f2]'
-                : 'bg-[#fdfcf7] text-[#0d0d11] border-[#0d0d11]/20 hover:border-[#0d0d11]'
-            }`}
-          >
-            {copiedId === activeTab ? (
-              <>
-                <Check size={12} className="text-white" />
-                <span className="font-semibold">Copied to Clipboard</span>
-              </>
-            ) : (
-              <>
-                <Copy size={12} />
-                <span>Copy Monospace ASCII</span>
-              </>
+          <div className="flex items-center gap-2 flex-wrap">
+            {onLaunchLab && (
+              <button
+                onClick={() => {
+                  playKeyClick();
+                  onLaunchLab();
+                }}
+                className="px-3 py-1.5 border font-mono-tech text-xs tracking-wider uppercase flex items-center gap-1.5 transition-colors bg-[#891a20] text-white border-[#891a20] hover:bg-[#a12027]"
+                title="Launch Merged 3D Hard Drive & ASCII LRU Lab"
+              >
+                <Cpu size={12} />
+                <span>⚡ Run Live in 3D Drive Lab</span>
+              </button>
             )}
-          </button>
+
+            {/* Copy Button */}
+            <button
+              onClick={() => {
+                const textMap = {
+                  pipeline: asciiPipeline,
+                  trajectory: generateAsciiTrajectory(),
+                  platter: generateAsciiPlatter(),
+                  files: asciiFiles,
+                  lru: asciiLruSwap,
+                };
+                copyToClipboard(textMap[activeTab], activeTab);
+              }}
+              className={`px-3 py-1.5 border font-mono-tech text-xs tracking-wider uppercase flex items-center gap-2 transition-colors ${
+                copiedId === activeTab
+                  ? 'bg-[#891a20] text-white border-[#891a20]'
+                  : isDark
+                  ? 'bg-[#15151f] text-[#d6d5dc] border-[#24242e] hover:border-[#f2f2f2]'
+                  : 'bg-[#fdfcf7] text-[#0d0d11] border-[#0d0d11]/20 hover:border-[#0d0d11]'
+              }`}
+            >
+              {copiedId === activeTab ? (
+                <>
+                  <Check size={12} className="text-white" />
+                  <span className="font-semibold">Copied to Clipboard</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={12} />
+                  <span>Copy Monospace ASCII</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Viewport */}
@@ -310,6 +403,7 @@ export default function AsciiDiagrams({
             {activeTab === 'trajectory' && generateAsciiTrajectory()}
             {activeTab === 'platter' && generateAsciiPlatter()}
             {activeTab === 'files' && asciiFiles}
+            {activeTab === 'lru' && asciiLruSwap}
           </pre>
         </div>
 
