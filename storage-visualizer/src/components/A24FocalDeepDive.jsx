@@ -9,7 +9,6 @@ import LruDiskSwapLab from './LruDiskSwapLab';
 import {
   X,
   ArrowLeft,
-  ArrowRight,
   Play,
   Pause,
   RotateCcw,
@@ -1231,17 +1230,6 @@ const A24FocalDeepDive = React.memo(function A24FocalDeepDive({
                   />
                 </div>
               </div>
-
-              <span
-                className={`mt-8 inline-flex items-center space-x-2.5 px-6 py-3 border text-xs font-mono-tech uppercase tracking-[0.2em] font-medium transition-[color,background-color,border-color] ${
-                  isDark
-                    ? 'border-[#24242e] bg-[#0c0c12] text-[#8c8b94] group-hover:text-[#f3f1ea] group-hover:border-[#f3f1ea]'
-                    : 'border-[#0d0d11]/20 bg-[#f5f4ef] text-[#6b6a72] group-hover:text-[#0d0d11] group-hover:border-[#0d0d11]'
-                }`}
-              >
-                <span>ADVANCE TO DISC {nextItem.num}</span>
-                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-              </span>
             </button>
 
             {/* Two-Stage Footer Long-Drag Progress Gauge (0/2 -> 1/2 -> Switch) */}
