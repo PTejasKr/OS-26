@@ -526,14 +526,25 @@ const HalftoneWordmarkFooter = React.memo(function HalftoneWordmarkFooter({
       const b = canvas.getBoundingClientRect();
       return [e.clientX - b.left, e.clientY - b.top];
     };
+    let moveThrottleRaf = 0;
     const onMove = (e) => {
       if (!opts.current.interactive) return;
-      const p = toLocal(e);
-      px = p[0];
-      py = p[1];
-      wake();
+      const clientX = e.clientX;
+      const clientY = e.clientY;
+      if (moveThrottleRaf) return;
+      moveThrottleRaf = requestAnimationFrame(() => {
+        moveThrottleRaf = 0;
+        const b = canvas.getBoundingClientRect();
+        px = clientX - b.left;
+        py = clientY - b.top;
+        wake();
+      });
     };
     const onLeave = () => {
+      if (moveThrottleRaf) {
+        cancelAnimationFrame(moveThrottleRaf);
+        moveThrottleRaf = 0;
+      }
       px = -1e5;
       py = -1e5;
       wake();
@@ -577,6 +588,10 @@ const HalftoneWordmarkFooter = React.memo(function HalftoneWordmarkFooter({
       alive = false;
       wakeRef.current = () => {};
       cancelAnimationFrame(raf);
+      if (moveThrottleRaf) {
+        cancelAnimationFrame(moveThrottleRaf);
+        moveThrottleRaf = 0;
+      }
       ro.disconnect();
       io.disconnect();
       root.removeEventListener("pointermove", onMove);

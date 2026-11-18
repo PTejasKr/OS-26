@@ -31,6 +31,7 @@ export default function PlatterCanvas({
 
   useEffect(() => {
     let animId;
+    let lastTime = performance.now();
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -38,12 +39,17 @@ export default function PlatterCanvas({
     const render = () => {
       ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-      // Smooth lerp arm movement towards targetTrack
+      const now = performance.now();
+      const dt = Math.min(0.064, Math.max(0.001, (now - lastTime) / 1000));
+      lastTime = now;
+
+      // Smooth lerp arm movement towards targetTrack with frame-rate independent exponential decay
       const diff = currentTrack - armTrackRef.current;
       if (Math.abs(diff) > 0.05) {
-        armTrackRef.current += diff * 0.16;
+        const lerpFactor = 1 - Math.exp(-12 * dt);
+        armTrackRef.current += diff * lerpFactor;
         const curInt = Math.round(armTrackRef.current);
-        if (curInt !== lastTrackSoundRef.current) {
+        if (Math.abs(curInt - lastTrackSoundRef.current) >= 6) {
           playSeekTick(1 + (curInt / maxTrack) * 0.5);
           lastTrackSoundRef.current = curInt;
         }
@@ -51,10 +57,10 @@ export default function PlatterCanvas({
         armTrackRef.current = currentTrack;
       }
 
-      // Rotate platter
+      // Rotate platter with delta time normalization for precise 60fps
       if (isRotating) {
-        const rotationSpeed = (rpm / 60) * 0.005;
-        angleRef.current = (angleRef.current + rotationSpeed) % (Math.PI * 2);
+        const rotationSpeed = (rpm / 60) * Math.PI * 2 * 0.08;
+        angleRef.current = (angleRef.current + rotationSpeed * dt) % (Math.PI * 2);
       }
 
       // Center and Dimensions

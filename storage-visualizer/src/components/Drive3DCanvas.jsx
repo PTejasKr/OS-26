@@ -237,12 +237,14 @@ export default function Drive3DCanvas({
       alpha: true,
       powerPreference: 'high-performance',
       precision: 'mediump',
+      stencil: false,
+      depth: true,
     });
     rendererRef.current = renderer;
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.BasicShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
 
@@ -265,12 +267,12 @@ export default function Drive3DCanvas({
     const ambientLight = new THREE.AmbientLight(0x3a424f, 2.2);
     scene.add(ambientLight);
 
-    // Key studio spotlight from top-left (optimized 1024 shadow map for smooth 60fps)
+    // Key studio spotlight from top-left (optimized 512 shadow map for silky smooth 60fps)
     const keyLight = new THREE.DirectionalLight(0xffffff, 3.8);
     keyLight.position.set(-5, 11, -4);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 1024;
-    keyLight.shadow.mapSize.height = 1024;
+    keyLight.shadow.mapSize.width = 512;
+    keyLight.shadow.mapSize.height = 512;
     keyLight.shadow.bias = -0.0001;
     scene.add(keyLight);
 
@@ -755,23 +757,30 @@ export default function Drive3DCanvas({
     driveGroup.add(activeRing);
     activeRingRef.current = activeRing;
 
-    // --- K. Animation Loop ---
+    // --- K. Animation Loop with Delta Time Normalization ---
     let animId;
+    let lastTime = performance.now();
 
     const animate = () => {
       animId = requestAnimationFrame(animate);
 
-      // Continuous Platter Rotation at set RPM
+      const now = performance.now();
+      const deltaSec = Math.min(0.064, Math.max(0.001, (now - lastTime) / 1000));
+      lastTime = now;
+
+      // Continuous Platter Rotation at exact set RPM (time-delta consistent 60fps)
       if (isRotatingRef.current && platterMeshRef.current) {
-        const spinSpeed = (rpm / 60) * 0.032;
-        platterMeshRef.current.rotation.y += spinSpeed;
+        const radPerSec = (rpm / 60) * Math.PI * 2 * 0.32;
+        platterMeshRef.current.rotation.y += radPerSec * deltaSec;
       }
 
-      // Smooth Law-of-Cosines Arm Seek Lerp
+      // Smooth Law-of-Cosines Arm Seek Lerp with Frame-Rate Independent Exponential Decay
       const targetAngle = trackToAngle(currentTrackRef.current);
       const angleDiff = targetAngle - armAngleRef.current;
-      if (Math.abs(angleDiff) > 0.0008) {
-        armAngleRef.current += angleDiff * 0.18;
+      if (Math.abs(angleDiff) > 0.0005) {
+        // Exponential decay: lerp factor adjusted for delta time
+        const lerpFactor = 1 - Math.exp(-12 * deltaSec);
+        armAngleRef.current += angleDiff * lerpFactor;
         if (armGroupRef.current) {
           armGroupRef.current.rotation.y = armAngleRef.current;
         }
